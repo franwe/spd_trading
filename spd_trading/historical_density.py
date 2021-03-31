@@ -1,16 +1,12 @@
-# ----------------------------------------------------------------------- GARCH
+# ---------------------------------------------------------------------------------------------------------------- GARCH
 import numpy as np
 from arch import arch_model
 import time
 import copy
 import pickle
 import os
-from os.path import join
 
 from .utils.density import density_estimation
-
-cwd = os.getcwd() + os.sep
-garch_data = join(cwd, "data", "02-2_hd_GARCH") + os.sep
 
 
 class GARCH:
@@ -19,6 +15,7 @@ class GARCH:
         data,
         data_name,
         n,
+        garch_data_folder,
         overwrite_garchmodel=False,
         window_length=365,
         z_h=0.1,
@@ -30,11 +27,9 @@ class GARCH:
         self.n = n
         self.no_of_paths_to_save = 50
         self.overwrite_garchmodel = overwrite_garchmodel
-        self.filename_garchmodel = join(
-            garch_data,
-            "GARCH_Model_{}_window_length-{}_n-{}".format(
-                self.data_name, self.window_length, self.n
-            ),
+        self.filename_garchmodel = os.path.join(
+            garch_data_folder,
+            "GARCH_Model_{}_window_length-{}_n-{}".format(self.data_name, self.window_length, self.n),
         )
 
     def load(self):
@@ -70,9 +65,7 @@ class GARCH:
         return res, pars, std_err
 
     def fit_GARCH(self):
-        if os.path.exists(self.filename_garchmodel) and (
-            self.overwrite_garchmodel == False
-        ):
+        if os.path.exists(self.filename_garchmodel) and (self.overwrite_garchmodel == False):
             print(
                 " -------------- use existing GARCH model: ",
                 self.filename_garchmodel,
@@ -90,9 +83,7 @@ class GARCH:
             window = self.data[end - i : start - i]
             data = window - np.mean(window)
 
-            res, parameters[i, :], parameter_bounds[i, :] = self._GARCH_fit(
-                data
-            )
+            res, parameters[i, :], parameter_bounds[i, :] = self._GARCH_fit(data)
 
             _, omega, alpha, beta = [
                 res.params["mu"],
@@ -121,13 +112,9 @@ class GARCH:
         self.sigma2_process = sigma2_process
 
         # ------------------------------------------- kernel density estimation
-        self.z_values = np.linspace(
-            min(self.z_process), max(self.z_process), 500
-        )
+        self.z_values = np.linspace(min(self.z_process), max(self.z_process), 500)
         h_dyn = self.z_h * (np.max(z_process) - np.min(z_process))
-        self.z_dens = density_estimation(
-            np.array(z_process), np.array(self.z_values), h=h_dyn
-        ).tolist()
+        self.z_dens = density_estimation(np.array(z_process), np.array(self.z_values), h=h_dyn).tolist()
 
         print("------------- save GARCH model: ", self.filename_garchmodel)
         self.save()
@@ -170,12 +157,8 @@ class GARCH:
         return new_pars
 
     def simulate_paths(self, horizon, M, variate=True):
-        print(
-            " -------------- simulate paths for: ", self.data_name, horizon, M
-        )
-        if os.path.exists(self.filename_garchmodel) and (
-            self.overwrite_garchmodel == False
-        ):
+        print(" -------------- simulate paths for: ", self.data_name, horizon, M)
+        if os.path.exists(self.filename_garchmodel) and (self.overwrite_garchmodel == False):
             print(
                 "    ----------- use existing GARCH model: ",
                 self.filename_garchmodel,
@@ -190,9 +173,7 @@ class GARCH:
         print("garch parameters :  ", pars)
         np.random.seed(1)  # for reproducability in _variate_pars()
 
-        new_pars = copy.deepcopy(
-            pars
-        )  # set pars for first round of simulation
+        new_pars = copy.deepcopy(pars)  # set pars for first round of simulation
         save_sigma = np.zeros((self.no_of_paths_to_save, horizon))
         save_e = np.zeros((self.no_of_paths_to_save, horizon))
         all_summed_returns = np.zeros(M)
@@ -200,11 +181,7 @@ class GARCH:
         tick = time.time()
         for i in range(M):
             if (i + 1) % (M * 0.1) == 0:
-                print(
-                    "{}/{} - runtime: {} min".format(
-                        i + 1, M, round((time.time() - tick) / 60)
-                    )
-                )
+                print("{}/{} - runtime: {} min".format(i + 1, M, round((time.time() - tick) / 60)))
             if ((i + 1) % (M * 0.05) == 0) & variate:
                 new_pars = self._variate_pars(pars, bounds)
             sigma2, e = self._GARCH_simulate(new_pars, horizon)
@@ -221,10 +198,8 @@ class GARCH:
         return all_summed_returns, all_tau_mu
 
 
-# ------------------------------------------------------------------ CALCULATOR
+# ----------------------------------------------------------------------------------------------------------- CALCULATOR
 import pandas as pd
-import os
-from os.path import join
 
 from .utils.density import density_trafo_K2M
 
@@ -234,7 +209,7 @@ class Calculator(GARCH):
         self,
         data,
         S0,
-        path,
+        garch_data_folder,
         tau_day,
         date,
         n,
@@ -250,7 +225,7 @@ class Calculator(GARCH):
         self.S0 = S0
         self.tau_day = tau_day
         self.date = date
-        self.path = path
+        self.garch_data_folder = garch_data_folder
         self.cutoff = cutoff
         self.overwrite = overwrite
         self.log_returns = self._get_log_returns()
@@ -261,6 +236,7 @@ class Calculator(GARCH):
             window_length=window_length,
             data_name=self.date,
             n=n,
+            garch_data_folder=self.garch_data_folder,
             z_h=0.1,
         )
 
@@ -279,73 +255,21 @@ class Calculator(GARCH):
     def get_hd(self, variate=True):
         self.filename = "T-{}_{}_Ksim.csv".format(self.tau_day, self.date)
         # simulate M paths
-        if os.path.exists(self.path + self.filename) and (
-            self.overwrite == False
-        ):
+        if os.path.exists(self.garch_data_folder + self.filename) and (self.overwrite == False):
             print("-------------- use existing Simulations ", self.filename)
             pass
         else:
             print("-------------- create new Simulations")
-            all_summed_returns, all_tau_mu = self.GARCH.simulate_paths(
-                self.tau_day, self.M, variate
-            )
+            all_summed_returns, all_tau_mu = self.GARCH.simulate_paths(self.tau_day, self.M, variate)
             self.ST = self._calculate_path(all_summed_returns, all_tau_mu)
-            pd.Series(self.ST).to_csv(
-                join(self.path, self.filename), index=False
-            )
+            pd.Series(self.ST).to_csv(os.path.join(self.garch_data_folder, self.filename), index=False)
 
-        self.ST = pd.read_csv(join(self.path, self.filename))
+        self.ST = pd.read_csv(os.path.join(self.garch_data_folder, self.filename))
         S_arr = np.array(self.ST)
-        self.K = np.linspace(
-            self.S0 * (1 - self.cutoff), self.S0 * (1 + self.cutoff), 100
-        )
+        self.K = np.linspace(self.S0 * (1 - self.cutoff), self.S0 * (1 + self.cutoff), 100)
         self.q_K = density_estimation(S_arr, self.K, h=self.S0 * self.h)
         self.M = np.linspace((1 - self.cutoff), (1 + self.cutoff), 100)
 
         M_arr = np.array(self.S0 / self.ST)
         self.q_M = density_estimation(M_arr, self.M, h=self.h)
         self.M2, self.q_M2 = density_trafo_K2M(self.K, self.q_K, self.S0)
-
-
-# ------------------------------------------------------------------------ DATA
-from .utils.connect_db import connect_db, get_as_df
-from datetime import datetime, timezone
-
-
-def nearest(items, pivot):
-    return min(items, key=lambda x: abs(x - pivot))
-
-
-def date_str2int(date_str):
-    return int(date_str[:4]), int(date_str[5:7]), int(date_str[8:])
-
-
-class Data:
-    def __init__(self, target="price"):
-        self.target = target
-        self.coll = connect_db()["BTCUSD_binance"]
-        self.complete = None
-        self._load_data()
-
-    def _load_data(self):
-        """ Load complete BTCUSDT prices """
-        prices_binance = get_as_df(self.coll, {})
-        self.complete = prices_binance
-
-    def filter_data(self, date):
-        S0 = self.complete.loc[self.complete.date_str == date, "price"].iloc[0]
-        df = self.complete[self.complete.date_str <= date]
-        return df, S0
-
-    def get_S0(self, day):
-        db = connect_db()
-        coll = db["BTCUSD"]
-        query = {"date": day}
-        prices = get_as_df(coll, query)
-        date = date_str2int(day)
-        dt = datetime(date[0], date[1], date[2], 8, 0, 0, 0)
-        ts_8 = dt.replace(tzinfo=timezone.utc).timestamp() * 1000
-
-        ts_idx = nearest(prices.datetime, ts_8)
-        S = prices[prices.datetime == ts_idx].index_price
-        return S.to_list()[0]

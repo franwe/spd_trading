@@ -15,7 +15,7 @@ class Plot:
         RND.data.loc[call_mask, "color"] = "red"  # red - call
 
         fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-        # ----------------------------------------------- Moneyness - Moneyness
+        # ---------------------------------------------------------------------------------------- Moneyness - Moneyness
         ax = axes[0]
         ax.scatter(RND.data.M, RND.data.q_M, 5, c=RND.data.color)
         ax.plot(RND.M, RND.q_M, "-", c="r")
@@ -36,7 +36,7 @@ class Plot:
         ax.vlines(1, 0, RND.data.q_M.max())
         ax.set_xlabel("Moneyness M")
 
-        # --------------------------------------------- Kernel K = q/p = rnd/hd
+        # -------------------------------------------------------------------------------------- Kernel K = q/p = rnd/hd
         hd_curve, rnd_curve, M = hd_rnd_domain(
             HD,
             RND,

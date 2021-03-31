@@ -1,8 +1,6 @@
 import numpy as np
 from scipy.stats import norm
 from statsmodels.nonparametric.bandwidths import bw_silverman
-import os
-from os.path import join
 
 from .utils.smoothing import (
     create_fit,
@@ -13,10 +11,7 @@ from .utils.smoothing import (
 from .utils.density import pointwise_density_trafo_K2M
 
 
-# ------------------------------------------------------------------ CALCULATOR
-cwd = os.getcwd() + os.sep
-source_data = join(cwd, "data", "00-raw") + os.sep
-save_data = join(cwd, "data", "02-1_rnd") + os.sep
+# ----------------------------------------------------------------------------------------------------------- CALCULATOR
 
 
 def create_bandwidth_range(X, bins_max=30, num=10):
@@ -50,26 +45,18 @@ def rookley_method(M, S, K, o, o1, o2, r, tau):
     dd_d1_M = (
         -(1 / (M * o * st)) * (1 / M + o1 / o)
         + o2 * (st / 2 - (np.log(M) + rt) / (o ** 2 * st))
-        + o1
-        * (2 * o1 * (np.log(M) + rt) / (o ** 3 * st) - 1 / (M * o ** 2 * st))
+        + o1 * (2 * o1 * (np.log(M) + rt) / (o ** 3 * st) - 1 / (M * o ** 2 * st))
     )
     dd_d2_M = (
         -(1 / (M * o * st)) * (1 / M + o1 / o)
         - o2 * (st / 2 + (np.log(M) + rt) / (o ** 2 * st))
-        + o1
-        * (2 * o1 * (np.log(M) + rt) / (o ** 3 * st) - 1 / (M * o ** 2 * st))
+        + o1 * (2 * o1 * (np.log(M) + rt) / (o ** 3 * st) - 1 / (M * o ** 2 * st))
     )
 
-    d_c_M = (
-        norm.pdf(d1) * d_d1_M
-        - 1 / ert * norm.pdf(d2) / M * d_d2_M
-        + 1 / ert * norm.cdf(d2) / (M ** 2)
-    )
+    d_c_M = norm.pdf(d1) * d_d1_M - 1 / ert * norm.pdf(d2) / M * d_d2_M + 1 / ert * norm.cdf(d2) / (M ** 2)
     dd_c_M = (
         norm.pdf(d1) * (dd_d1_M - d1 * (d_d1_M) ** 2)
-        - norm.pdf(d2)
-        / (ert * M)
-        * (dd_d2_M - 2 / M * d_d2_M - d2 * (d_d2_M) ** 2)
+        - norm.pdf(d2) / (ert * M) * (dd_d2_M - 2 / M * d_d2_M - d2 * (d_d2_M) ** 2)
         - 2 * norm.cdf(d2) / (ert * M ** 3)
     )
 
@@ -80,22 +67,14 @@ def rookley_method(M, S, K, o, o1, o2, r, tau):
 
 
 class Calculator:
-    def __init__(
-        self,
-        data,
-        tau_day,
-        date,
-        h_m=None,
-        h_m2=None,
-        h_k=None,
-    ):
+    def __init__(self, data, tau_day, date, h_m=None, h_m2=None, h_k=None, r=0):
         self.data = data
         self.tau_day = tau_day
         self.date = date
         self.h_m = h_m
         self.h_m2 = h_m2
         self.h_k = h_k
-        self.r = 0
+        self.r = r
 
         self.tau = self.data.tau.iloc[0]
         self.K = None
@@ -109,9 +88,7 @@ class Calculator:
 
     def bandwidth_and_fit(self, X, y):
         x_bandwidth, bw_silver, lower_bound = create_bandwidth_range(X)
-        cv_results = bandwidth_cv(
-            X, y, x_bandwidth, smoothing=local_polynomial_estimation
-        )
+        cv_results = bandwidth_cv(X, y, x_bandwidth, smoothing=local_polynomial_estimation)
         h = cv_results["fine results"]["h"]
 
         X_domain, fit, first, second, h = create_fit(X, y, h)
@@ -128,9 +105,7 @@ class Calculator:
     def curve_fit(self, X, y, h=None):
         if h is None:
             x_bandwidth, bw_silver, lower_bound = create_bandwidth_range(X)
-            cv_results = bandwidth_cv(
-                X, y, x_bandwidth, smoothing=local_polynomial_estimation
-            )
+            cv_results = bandwidth_cv(X, y, x_bandwidth, smoothing=local_polynomial_estimation)
 
             parameters = {
                 "h": cv_results["fine results"]["h"],
@@ -157,21 +132,6 @@ class Calculator:
         }
         return results
 
-    # def fit_smile(self):
-    #     X = np.array(self.data.M)
-    #     y = np.array(self.data.iv)
-    #     results = self.curve_fit(
-    #         X,
-    #         y,
-    #         self.h_m,
-    #     )  # h_m : Union[None, float]
-    #     self.h_m = results["parameters"]["h"]
-    #     self.M_smile = results["fit"]["X"]
-    #     self.smile = results["fit"]["y"]
-    #     self.first = results["fit"]["first"]
-    #     self.second = results["fit"]["second"]
-    #     return
-
     def calc_rnd(self):
         # step 0: fit iv-smile to iv-over-M option values
         X = np.array(self.data.M)
@@ -189,9 +149,7 @@ class Calculator:
 
         # ------------------------------------ B-SPLINE on SMILE, FIRST, SECOND
         print("fit bspline to derivatives for rookley method")
-        pars, spline, points = bspline(
-            self.M_smile, self.smile, sections=8, degree=3
-        )
+        pars, spline, points = bspline(self.M_smile, self.smile, sections=8, degree=3)
         # derivatives
         first_fct = spline.derivative(1)
         second_fct = spline.derivative(2)
@@ -228,9 +186,7 @@ class Calculator:
 
         # step 3: transform density POINTS from K- to M-domain
         print("density transform rookley points q_K to q_M")
-        self.data["q_M"] = pointwise_density_trafo_K2M(
-            self.K, self.q_K, self.data.S, self.data.M
-        )
+        self.data["q_M"] = pointwise_density_trafo_K2M(self.K, self.q_K, self.data.S, self.data.M)
 
         # step 4: density points in M-domain - fit density curve
         print("locpoly fit to q_M")
@@ -248,65 +204,7 @@ class Calculator:
         return
 
 
-# ------------------------------------------------------------------------ DATA
-from util.connect_db import connect_db, get_as_df
-
-
-class Data:
-    def __init__(self, cutoff):
-        self.coll = connect_db()["trades_clean"]
-        self.cutoff = cutoff
-
-    def load_data(self, date_str):
-        """Load all trades, with duplicates.
-        It DOES make a difference in Fitting!"""
-        x = self.cutoff
-        query = {"date": date_str}
-        d = get_as_df(self.coll, query)
-        df = d[(d.M <= 1 + x) & (d.M > 1 - x)]
-        df = df[(df.iv > 0.01)]
-        self.complete = df
-
-    def analyse(self, date=None, sortby="date"):
-        if date is None:
-            cursor = self.coll.aggregate(
-                [
-                    {"$group": {"_id": "$date", "count": {"$sum": 1}}},
-                    {"$sort": {"_id": -1}},
-                ]
-            )
-        else:
-            cursor = self.coll.aggregate(
-                [
-                    {"$match": {"date": date}},
-                    {"$group": {"_id": "$tau_day", "count": {"$sum": 1}}},
-                    {"$sort": {"_id": 1}},
-                ]
-            )
-        return list(cursor)
-
-    def delete_duplicates(self):
-        """
-        Should I do it or not? It deletes if for same option was bought twice a
-        day. I guess better not delete, because might help for fitting to have
-        weight of more trades to the "normal" values.
-        """
-        self.unique = self.complete.drop_duplicates()
-
-    def filter_data(self, date, tau_day, mode="unique"):
-        self.load_data(date)
-        if mode == "complete":
-            filtered_by_date = self.complete
-        elif mode == "unique":
-            self.delete_duplicates()
-            filtered_by_date = self.unique
-
-        df_tau = filtered_by_date[(filtered_by_date.tau_day == tau_day)]
-        df_tau = df_tau.reset_index()
-        return df_tau
-
-
-# ------------------------------------------------------------------------ PLOT
+# ----------------------------------------------------------------------------------------------------------------- PLOT
 from matplotlib import pyplot as plt
 
 

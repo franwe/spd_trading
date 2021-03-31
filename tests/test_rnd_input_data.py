@@ -4,7 +4,7 @@ import numpy as np
 import unittest
 import os
 
-TESTDATA_FILENAME = os.path.join(".", "data", "rnd_input_data.csv")
+TESTDATA_FILENAME = os.path.join(".", "examples", "data", "rnd_input_data.csv")
 
 rnd_options_schema = {
     "M": {

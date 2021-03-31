@@ -4,7 +4,7 @@ import numpy as np
 import unittest
 import os
 
-TESTDATA_FILENAME = os.path.join(".", "data", "hd_input_data.csv")
+TESTDATA_FILENAME = os.path.join(".", "examples", "data", "hd_input_data.csv")
 
 rnd_options_schema = {
     "date_str": {"range": {"min": "1000-01-01", "max": "9999-12-31"}, "dtype": object},  # np.dtype str -> object

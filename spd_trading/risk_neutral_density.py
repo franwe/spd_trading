@@ -14,19 +14,45 @@ from .utils.density import pointwise_density_trafo_K2M
 # ----------------------------------------------------------------------------------------------------------- CALCULATOR
 
 
-def create_bandwidth_range(X, bins_max=30, num=10):
+def create_bandwidth_range(X, num=10):
+    """Creates a range of bandwidths around the Silverman Bandwidth. Is used as a parameter grid for bandwidth
+    optimization for smoothing algorithms.
+
+    Args:
+        X (np.array): X position of values
+        num (int, optional): Length of grid. Defaults to 10.
+
+    Returns:
+        np.array: Equal grid of bandwidths around Silverman bandwidth.
+    """
     bw_silver = bw_silverman(X)
     if bw_silver > 10:
         lower_bound = max(0.5 * bw_silver, 100)
     else:
         lower_bound = max(0.5 * bw_silver, 0.03)
     x_bandwidth = np.linspace(lower_bound, 7 * bw_silver, num)
-    print("------ Silverman: ", bw_silver)
     return x_bandwidth, bw_silver, lower_bound
 
 
 def rookley_method(M, S, K, o, o1, o2, r, tau):
-    """from Applied Quant. Finance - Chapter 8"""
+    """Uses Rookleys Method to calculate the Risk Neutral Density from an option table. The method can be found in the
+    original paper. It calculates the second derivative of the option price by strike price (analytical solution) where
+    some dimentionality reduction is used, that has to be resolved in the last step.
+
+    Args:
+        M (float)   : Moneyness = S / K
+        S (float)   : Price of underlying
+        K (float)   : Strike Price of option
+        o (float)   : implied volatility (iv, might be value of smoothed iv surface at M)
+        o1 (float)  : value of first derivative of iv surface at M
+        o2 (float)  : value of second derivative of iv surface at M
+        r (float)   : risk free interest rate
+        tau (float) : time until maturity (in years)
+
+    Returns:
+        float: value of Risk Neutral Density at Strike Price K.
+        (usually the result is projected to M, use Density Transformation)
+    """
     st = np.sqrt(tau)
     rt = r * tau
     ert = np.exp(rt)
@@ -67,6 +93,23 @@ def rookley_method(M, S, K, o, o1, o2, r, tau):
 
 
 class Calculator:
+    """The Calculator Class for the Risk Neutral Density.
+
+    Stores all relevant parameters for traceability and reproducability.
+    - Rookleys method
+    - Local polynomial estimation
+    - Density transformation
+
+    Attributes:
+        data: The option table as a pd.DataFrame. Must include columns ["M", "iv", "S", "P", "K", "option", "tau"]
+        tau_day: Time to maturity in days (tau * 365)
+        date: Date of the option table.
+        h_m: bandwidth for local polynomial estimation for iv-smile-fit
+        h_m2: bandwidth for local polynomial estimation for q_M fit
+        h_k: bandwidth for local polynomial estimation for q_K fit
+        r: risk free interest rate
+    """
+
     def __init__(self, data, tau_day, date, h_m=None, h_m2=None, h_k=None, r=0):
         self.data = data
         self.tau_day = tau_day
@@ -86,23 +129,20 @@ class Calculator:
         self.first = None
         self.second = None
 
-    def bandwidth_and_fit(self, X, y):
-        x_bandwidth, bw_silver, lower_bound = create_bandwidth_range(X)
-        cv_results = bandwidth_cv(X, y, x_bandwidth, smoothing=local_polynomial_estimation)
-        h = cv_results["fine results"]["h"]
-
-        X_domain, fit, first, second, h = create_fit(X, y, h)
-        results = {
-            "parameters": {
-                "h": cv_results["fine results"]["h"],
-                "bandwidths": cv_results["fine results"]["bandwidths"],
-                "MSE": cv_results["fine results"]["MSE"],
-            },
-            "fit": {"y": fit, "first": first, "second": second, "X": X_domain},
-        }
-        return results
-
     def curve_fit(self, X, y, h=None):
+        """Uses local polynomial estimation to create a fit and estimate its first and second derivative.
+        If no bandwidth h is given, first a Cross Validation for a range of bandwidths is performed. The final fit is
+        performed with the optimal bandwidth (by MSE).
+
+        Args:
+            X (np.array): X-values of data that is to be fitted (explanatory variable)
+            y (np.array): y-values of data that is to be fitted (observations)
+            h ([type], optional): Bandwidth for local polynomial estimation. If not specified, h will be determined by
+                Cross Validation. Defaults to None.
+
+        Returns:
+            dict: Results of fit. "parameters" ("h","bandwidths","MSE"), "fit" ("X", "y", "first", "second")
+        """
         if h is None:
             x_bandwidth, bw_silver, lower_bound = create_bandwidth_range(X)
             cv_results = bandwidth_cv(X, y, x_bandwidth, smoothing=local_polynomial_estimation)
@@ -133,6 +173,18 @@ class Calculator:
         return results
 
     def calc_rnd(self):
+        """Pipeline that calculates the Risk Neutral Density using Rookley's Method.
+
+        Tools used: Local Polynomial Smoothing and Density Transformation.
+        The final result is saved in self.M, self.q_M
+
+        | step 0 : fit iv-smile to iv-over-M option values
+        | step 1 : alculate spd for every option-point "Rookley's method"
+        | step 2 : Rookley results (points in K-domain) - fit density curve
+        | step 3 : transform density POINTS from K- to M-domain
+        | step 4 : density points in M-domain - fit density curve
+        | (All fits are obtained by local polynomial estimation)
+        """
         # step 0: fit iv-smile to iv-over-M option values
         X = np.array(self.data.M)
         y = np.array(self.data.iv)

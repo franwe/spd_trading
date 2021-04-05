@@ -133,3 +133,6 @@ dmypy.json
 
 # VS Code project settings
 .vscode
+
+# sleeping files
+*/zz_*

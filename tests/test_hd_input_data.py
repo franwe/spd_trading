@@ -1,12 +1,9 @@
-import pandas as pd
 import numpy as np
 
-import unittest
-import os
+from spd_trading.config.core import config
 
-TESTDATA_FILENAME = os.path.join(".", "examples", "data", "hd_input_data.csv")
 
-rnd_options_schema = {
+hd_index_schema = {
     "date_str": {"range": {"min": "1000-01-01", "max": "9999-12-31"}, "dtype": object},  # np.dtype str -> object
     "price": {
         "range": {"min": 0, "max": np.inf},
@@ -15,29 +12,23 @@ rnd_options_schema = {
 }
 
 
-class TestRndInputData(unittest.TestCase):
-    def setUp(self):
-        self.data = pd.read_csv(TESTDATA_FILENAME)
-
-    def test_input_data_columns(self):
-        df_columns = self.data.columns.tolist()
-        for col in rnd_options_schema.keys():
-            self.assertTrue(col in df_columns)
-
-    def test_input_data_ranges(self):
-        max_values = self.data.max()
-        min_values = self.data.min()
-
-        for feature in rnd_options_schema.keys():
-            self.assertTrue(max_values[feature] <= rnd_options_schema[feature]["range"]["max"])
-            self.assertTrue(min_values[feature] >= rnd_options_schema[feature]["range"]["min"])
-
-    def test_input_data_types(self):
-        data_types = self.data.dtypes  # pandas dtypes method
-
-        for feature in rnd_options_schema.keys():
-            self.assertEqual(data_types[feature], rnd_options_schema[feature]["dtype"])
+def test_input_data_columns(hd_input_data):
+    for feature in config.model_config.hd_input_features:
+        assert feature in hd_input_data.columns
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_input_data_ranges(hd_input_data):
+    max_values = hd_input_data.max()
+    min_values = hd_input_data.min()
+
+    for feature in hd_index_schema.keys():
+        print(feature)
+        assert max_values[feature] <= hd_index_schema[feature]["range"]["max"]
+        assert min_values[feature] >= hd_index_schema[feature]["range"]["min"]
+
+
+def test_input_data_types(hd_input_data):
+    data_types = hd_input_data.dtypes  # pandas dtypes method
+
+    for feature in hd_index_schema.keys():
+        assert data_types[feature] == hd_index_schema[feature]["dtype"]

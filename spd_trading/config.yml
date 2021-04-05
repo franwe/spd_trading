@@ -22,7 +22,7 @@ target: q_M
 #   2ndFlrSF: SecondFlrSF
 #   3SsnPorch: ThreeSsnPortch
 
-rnd_features:
+rnd_input_features:
   - M
   - iv
   - S
@@ -30,10 +30,10 @@ rnd_features:
   - K
   - tau
   - option
-    # this one is only to calculate temporal variable:
-  - q_K
 
-hd_features:
+# maybe have rnd_developed_features (q_K, h_m....)
+
+hd_input_features:
   - price
   - date_str
 

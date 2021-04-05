@@ -16,9 +16,9 @@ hd_input_data_file: hd_input_data.csv
 pipeline_name: spd_calculator
 pipeline_save_file: spd_calculator_output_v
 target: q_M
-rnd_features:
+rnd_input_features:
   - M
-hd_features:
+hd_input_features:
   - price
 numerical_vars:
   - M
@@ -41,9 +41,9 @@ hd_input_data_file: hd_input_data.csv
 pipeline_name: spd_calculator
 pipeline_save_file: spd_calculator_output_v
 target: q_M
-rnd_features:
+rnd_input_features:
   - M
-hd_features:
+hd_input_features:
   - price
 numerical_vars:
   - M
@@ -111,7 +111,3 @@ def test_missing_config_field_raises_validation_error(tmpdir):
     # Then
     assert "field required" in str(excinfo.value)
     assert "pipeline_name" in str(excinfo.value)
-
-
-test_missing_config_field_raises_validation_error("")
-a = 1

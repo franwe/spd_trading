@@ -136,3 +136,8 @@ dmypy.json
 
 # sleeping files
 */zz_*
+
+# tmp files
+/examples/data/GARCH*
+/examples/data/T*
+sample_config.yml

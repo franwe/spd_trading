@@ -1,13 +1,9 @@
 import numpy as np
 from scipy.stats import norm
 from statsmodels.nonparametric.bandwidths import bw_silverman
+from local_polynomial_regression.base import LocalPolynomialRegression, LocalPolynomialRegressionCV
 
-from .utils.smoothing import (
-    create_fit,
-    bandwidth_cv,
-    bspline,
-    local_polynomial_estimation,
-)
+from .utils.smoothing import bspline
 from .utils.density import pointwise_density_trafo_K2M
 
 
@@ -144,14 +140,23 @@ class Calculator:
             dict: Results of fit. "parameters" ("h","bandwidths","MSE"), "fit" ("X", "y", "first", "second")
         """
         if h is None:
-            x_bandwidth, bw_silver, lower_bound = create_bandwidth_range(X)
-            cv_results = bandwidth_cv(X, y, x_bandwidth, smoothing=local_polynomial_estimation)
+            list_of_bandwidths, bw_silver, lower_bound = create_bandwidth_range(X)
+            model_cv = LocalPolynomialRegressionCV(
+                X=X,
+                y=y,
+                kernel="gaussian",
+                n_sections=15,
+                loss="MSE",
+                sampling="slicing",
+            )
 
+            cv_results = model_cv.bandwidth_cv(list_of_bandwidths)
             parameters = {
                 "h": cv_results["fine results"]["h"],
                 "bandwidths": cv_results["fine results"]["bandwidths"],
                 "MSE": cv_results["fine results"]["MSE"],
             }
+            print(f"Optimal Bandwidth: {parameters['h']}")
 
         else:
             parameters = {
@@ -160,7 +165,9 @@ class Calculator:
                 "MSE": None,
             }
 
-        X_domain, fit, first, second, h = create_fit(X, y, parameters["h"])
+        model = LocalPolynomialRegression(X=X, y=y, h=parameters["h"], kernel="gaussian", gridsize=100)
+        prediction_interval = (X.min(), X.max())
+        X_domain, fit, first, second, h = model.fit(prediction_interval)
         results = {
             "parameters": parameters,
             "fit": {

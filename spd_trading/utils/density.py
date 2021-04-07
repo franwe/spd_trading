@@ -56,6 +56,33 @@ def pointwise_density_trafo_K2M(K, q_K, S_vals, M_vals):
     return q_pointsM
 
 
+def density_trafo_K2M(K, q_K, S):
+    """Density transformation from K (Strike Price) to M (Moneyness) domain. M = S/K
+
+    First, a spline has to be fitted to q_K, so that it is possible to extract the q_K-value at every point of
+    interest, not just at the known points K.
+    Then, it is iterated through the (M, S)-tuples and the density q_K is transformed to q_M.
+
+    Args:
+        K (np.array): Strike Price values for which the density q_K is know.
+        q_K (np.array): Density values in Strike Price domain.
+        S (array-like): Prices of underlying for the density points.
+
+    Returns:
+        [np.array]: Density values in Moneyness domain.
+    """
+
+    _, q_K, _ = bspline(K, q_K, 30)
+
+    num = len(K)
+    M = np.linspace(0.5, 1.5, num)
+    q_M = np.zeros(num)
+    for i, m in enumerate(M):
+        q_M[i] = S / (m ** 2) * q_K(S / m)
+
+    return M, q_M
+
+
 def hd_rnd_domain(HD, RND, interval=[0.5, 1.5]):
     """Interpolates HD and RND densities (q_M) to the same interval, especially same interval values!
 

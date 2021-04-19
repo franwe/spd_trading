@@ -13,8 +13,6 @@ TEST_CONFIG_TEXT = """
 package_name: spd_trading
 rnd_input_data_file: rnd_input_data.csv
 hd_input_data_file: hd_input_data.csv
-pipeline_name: spd_calculator
-pipeline_save_file: spd_calculator_output_v
 target: q_M
 rnd_input_features:
   - M
@@ -27,7 +25,6 @@ categorical_vars:
 numerical_na_not_allowed:
   - M
 random_state: 1
-n_slices: 15
 loss: ls
 allowed_loss_functions:
   - ls
@@ -38,8 +35,6 @@ INVALID_TEST_CONFIG_TEXT = """
 package_name: spd_trading
 rnd_input_data_file: rnd_input_data.csv
 hd_input_data_file: hd_input_data.csv
-pipeline_name: spd_calculator
-pipeline_save_file: spd_calculator_output_v
 target: q_M
 rnd_input_features:
   - M
@@ -52,7 +47,6 @@ categorical_vars:
 numerical_na_not_allowed:
   - M
 random_state: 1
-n_slices: 15
 loss: ls
 allowed_loss_functions:
   - MSE
@@ -63,7 +57,7 @@ def test_fetch_config_structure(tmpdir):
     # Given
     # We make use of the pytest built-in tmpdir fixture
     configs_dir = Path(tmpdir)
-    config_1 = configs_dir / "sample_config.yml"
+    config_1 = configs_dir / "sample_config.yaml"
     config_1.write_text(TEST_CONFIG_TEXT)
     parsed_config = fetch_config_from_yaml(cfg_path=config_1)
 
@@ -79,7 +73,7 @@ def test_config_validation_raises_error_for_invalid_config(tmpdir):
     # Given
     # We make use of the pytest built-in tmpdir fixture
     configs_dir = Path(tmpdir)
-    config_1 = configs_dir / "sample_config.yml"
+    config_1 = configs_dir / "sample_config.yaml"
 
     # invalid config attempts to set a prohibited loss
     # function which we validate against an allowed set of
@@ -99,7 +93,7 @@ def test_missing_config_field_raises_validation_error(tmpdir):
     # Given
     # We make use of the pytest built-in tmpdir fixture
     configs_dir = Path(tmpdir)
-    config_1 = configs_dir / "sample_config.yml"
+    config_1 = configs_dir / "sample_config.yaml"
     TEST_CONFIG_TEXT = """package_name: spd_trading"""
     config_1.write_text(TEST_CONFIG_TEXT)
     parsed_config = fetch_config_from_yaml(cfg_path=config_1)
@@ -110,4 +104,3 @@ def test_missing_config_field_raises_validation_error(tmpdir):
 
     # Then
     assert "field required" in str(excinfo.value)
-    assert "pipeline_name" in str(excinfo.value)

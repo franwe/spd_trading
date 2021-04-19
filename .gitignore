@@ -140,4 +140,4 @@ dmypy.json
 # tmp files
 /examples/data/GARCH*
 /examples/data/T*
-sample_config.yml
+sample_config.yaml

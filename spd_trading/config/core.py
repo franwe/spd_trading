@@ -9,7 +9,7 @@ import spd_trading
 # Project Directories
 PACKAGE_ROOT = Path(spd_trading.__file__).resolve().parent
 ROOT = PACKAGE_ROOT.parent
-CONFIG_FILE_PATH = PACKAGE_ROOT / "config.yml"
+CONFIG_FILE_PATH = PACKAGE_ROOT / "config.yaml"
 # TRAINED_MODEL_DIR = PACKAGE_ROOT / "trained_models"
 DATASET_DIR = PACKAGE_ROOT / "datasets"
 
@@ -20,8 +20,6 @@ class AppConfig(BaseModel):
     """
 
     package_name: str
-    pipeline_name: str
-    pipeline_save_file: str
     rnd_input_data_file: str
     hd_input_data_file: str
 
@@ -44,7 +42,6 @@ class ModelConfig(BaseModel):
     numerical_na_not_allowed: t.Sequence[str]
     # test_size: float
     random_state: int
-    n_slices: int
 
     # the order is necessary for validation
     allowed_loss_functions: t.Tuple[str, ...]

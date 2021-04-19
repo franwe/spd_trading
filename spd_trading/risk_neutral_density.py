@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 from statsmodels.nonparametric.bandwidths import bw_silverman
-from local_polynomial_regression.base import LocalPolynomialRegression, LocalPolynomialRegressionCV
+from localpoly.base import LocalPolynomialRegression, LocalPolynomialRegressionCV
 
 from .utils.smoothing import bspline
 from .utils.density import pointwise_density_trafo_K2M
@@ -100,21 +100,42 @@ class Calculator:
         data: The option table as a pd.DataFrame. Must include columns ["M", "iv", "S", "P", "K", "option", "tau"]
         tau_day: Time to maturity in days (tau * 365)
         date: Date of the option table.
+        sampling: Whether the dataset should be partitioned “random” or as “slicing”. Defaults to “random”
         h_m: bandwidth for local polynomial estimation for iv-smile-fit
         h_m2: bandwidth for local polynomial estimation for q_M fit
         h_k: bandwidth for local polynomial estimation for q_K fit
         r: risk free interest rate
     """
 
-    def __init__(self, data, tau_day, date, h_m=None, h_m2=None, h_k=None, r=0):
+    def __init__(
+        self,
+        data,
+        tau_day,
+        date,
+        sampling="random",
+        n_sections=15,
+        loss="MSE",
+        kernel="gaussian",
+        h_m=None,
+        h_m2=None,
+        h_k=None,
+        r=0,
+    ):
         self.data = data
         self.tau_day = tau_day
         self.date = date
+
+        # parameters for LocalPolynomialRegression
+        self.sampling = sampling
+        self.n_sections = n_sections
+        self.loss = loss
+        self.kernel = kernel
         self.h_m = h_m
         self.h_m2 = h_m2
         self.h_k = h_k
         self.r = r
 
+        # parameters that are created during run
         self.tau = self.data.tau.iloc[0]
         self.K = None
         self.M = None
@@ -144,10 +165,10 @@ class Calculator:
             model_cv = LocalPolynomialRegressionCV(
                 X=X,
                 y=y,
-                kernel="gaussian",
-                n_sections=15,
-                loss="MSE",
-                sampling="slicing",
+                kernel=self.kernel,
+                n_sections=self.n_sections,
+                loss=self.loss,
+                sampling=self.sampling,
             )
 
             cv_results = model_cv.bandwidth_cv(list_of_bandwidths)
@@ -165,17 +186,12 @@ class Calculator:
                 "MSE": None,
             }
 
-        model = LocalPolynomialRegression(X=X, y=y, h=parameters["h"], kernel="gaussian", gridsize=100)
+        model = LocalPolynomialRegression(X=X, y=y, h=parameters["h"], kernel=self.kernel, gridsize=100)
         prediction_interval = (X.min(), X.max())
-        X_domain, fit, first, second, h = model.fit(prediction_interval)
+        fit_results = model.fit(prediction_interval)
         results = {
             "parameters": parameters,
-            "fit": {
-                "y": fit,
-                "first": first,
-                "second": second,
-                "X": X_domain,
-            },
+            "fit": fit_results,
         }
         return results
 
@@ -202,7 +218,7 @@ class Calculator:
         )  # h_m : Union[None, float]
         self.h_m = results["parameters"]["h"]
         self.M_smile = results["fit"]["X"]
-        self.smile = results["fit"]["y"]
+        self.smile = results["fit"]["fit"]
         self.first = results["fit"]["first"]
         self.second = results["fit"]["second"]
 
@@ -240,7 +256,7 @@ class Calculator:
             self.h_k,
         )  # h_k : Union[None, float]
         self.h_k = results["parameters"]["h"]
-        self.q_K = results["fit"]["y"]
+        self.q_K = results["fit"]["fit"]
         self.K = results["fit"]["X"]
 
         # step 3: transform density POINTS from K- to M-domain
@@ -258,7 +274,7 @@ class Calculator:
             self.h_m2,
         )  # h_m : Union[None, float]
         self.h_m2 = results["parameters"]["h"]
-        self.q_M = results["fit"]["y"]
+        self.q_M = results["fit"]["fit"]
         self.M = results["fit"]["X"]
         return
 

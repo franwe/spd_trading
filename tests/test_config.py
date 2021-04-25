@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from spd_trading.config.core import (
     create_and_validate_config,
     fetch_config_from_yaml,
@@ -55,10 +53,8 @@ allowed_loss_functions:
 
 def test_fetch_config_structure(tmpdir):
     # Given
-    # We make use of the pytest built-in tmpdir fixture
-    configs_dir = Path(tmpdir)
-    config_1 = configs_dir / "sample_config.yaml"
-    config_1.write_text(TEST_CONFIG_TEXT)
+    config_1 = tmpdir.mkdir("sub").join("sample_config.yaml")
+    config_1.write(TEST_CONFIG_TEXT)
     parsed_config = fetch_config_from_yaml(cfg_path=config_1)
 
     # When
@@ -71,14 +67,12 @@ def test_fetch_config_structure(tmpdir):
 
 def test_config_validation_raises_error_for_invalid_config(tmpdir):
     # Given
-    # We make use of the pytest built-in tmpdir fixture
-    configs_dir = Path(tmpdir)
-    config_1 = configs_dir / "sample_config.yaml"
+    config_1 = tmpdir.mkdir("sub").join("sample_config.yaml")
 
     # invalid config attempts to set a prohibited loss
     # function which we validate against an allowed set of
     # loss function parameters.
-    config_1.write_text(INVALID_TEST_CONFIG_TEXT)
+    config_1.write(INVALID_TEST_CONFIG_TEXT)
     parsed_config = fetch_config_from_yaml(cfg_path=config_1)
 
     # When
@@ -92,10 +86,9 @@ def test_config_validation_raises_error_for_invalid_config(tmpdir):
 def test_missing_config_field_raises_validation_error(tmpdir):
     # Given
     # We make use of the pytest built-in tmpdir fixture
-    configs_dir = Path(tmpdir)
-    config_1 = configs_dir / "sample_config.yaml"
+    config_1 = tmpdir.mkdir("sub").join("sample_config.yaml")
     TEST_CONFIG_TEXT = """package_name: spd_trading"""
-    config_1.write_text(TEST_CONFIG_TEXT)
+    config_1.write(TEST_CONFIG_TEXT)
     parsed_config = fetch_config_from_yaml(cfg_path=config_1)
 
     # When

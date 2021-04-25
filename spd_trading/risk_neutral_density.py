@@ -96,15 +96,32 @@ class Calculator:
     - Local polynomial estimation
     - Density transformation
 
+    Args:
+        data (pd.DataFrame): The option table as a pd.DataFrame. Must include columns
+            ``["M", "iv", "S", "P", "K", "option", "tau"]``
+        tau_day (int): Time to maturity in days (tau * 365)
+        date (str): Date of the option table.
+        sampling (str, optional): Whether the dataset should be partitioned “random” or as “slicing”. Defaults to
+            “random”.
+        n_sections (int, optional): Amount of sections to devide the dataset in cross validation (k-folds) for bandwidth
+            selection ``localpoly.LocalPolynomialRegressionCV.bandwdith_cv``. Defaults to 15.
+        loss (str, optional): Loss function for optimization. Defaults to "MSE".
+        kernel (str, optional): Name of the kernel. Defaults to "gaussian".
+        h_m (float): bandwidth for local polynomial estimation for iv-smile-fit. Defaults to None.
+        h_m2 (float, optional): bandwidth for local polynomial estimation for q_M fit. Defaults to None.
+        h_k (float, optional): bandwidth for local polynomial estimation for q_K fit. Defaults to None.
+        r (float, optional): risk free interest rate. Defaults to 0.
+
     Attributes:
-        data: The option table as a pd.DataFrame. Must include columns ["M", "iv", "S", "P", "K", "option", "tau"]
-        tau_day: Time to maturity in days (tau * 365)
-        date: Date of the option table.
-        sampling: Whether the dataset should be partitioned “random” or as “slicing”. Defaults to “random”
-        h_m: bandwidth for local polynomial estimation for iv-smile-fit
-        h_m2: bandwidth for local polynomial estimation for q_M fit
-        h_k: bandwidth for local polynomial estimation for q_K fit
-        r: risk free interest rate
+        tau (float): Time to maturity in years.
+        K (np.array): Strike Price Domain, for standard result of Rookley's Method.
+        M (np.array): Moneyness Domain, for transformed result of Rookley's Method.
+        q_M (np.array): Risk Neutral Density in Moneyness domain. Transformed result of Rookley's Method.
+        q_K (np.array): Risk Neutral Density in Strike Price domain. Standard result of Rookley's Method.
+        M_smile (np.array): Moneyness Domain for implied volatility fit "iv-smile".
+        smile (np.array): Implied volatility fit "iv-smile".
+        first (np.array): First derivative of iv-smile.
+        second (np.array): Second derivative of iv-smile.
     """
 
     def __init__(
@@ -121,6 +138,7 @@ class Calculator:
         h_k=None,
         r=0,
     ):
+        # data and meta settings
         self.data = data
         self.tau_day = tau_day
         self.date = date
@@ -158,7 +176,21 @@ class Calculator:
                 Cross Validation. Defaults to None.
 
         Returns:
-            dict: Results of fit. "parameters" ("h","bandwidths","MSE"), "fit" ("X", "y", "first", "second")
+            dict: Results of fit::
+
+                {
+                    "parameters" : {
+                        "h": optimal bandwidth
+                        "bandwidths": list_of_bandwidths
+                        "MSE": means squared error for bandwidths
+                    },
+                    "fit" : {
+                        "X": prediction interval of fit
+                        "fit": fit
+                        "first": first derivative of fit
+                        "second": second derivative of fit
+                    }
+                }
         """
         if h is None:
             list_of_bandwidths, bw_silver, lower_bound = create_bandwidth_range(X)

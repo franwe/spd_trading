@@ -273,3 +273,23 @@ class Calculator(GARCH):
         M_arr = np.array(self.S0 / self.ST)
         self.q_M = density_estimation(M_arr, self.M, h=self.h)
         self.M2, self.q_M2 = density_trafo_K2M(self.K, self.q_K, self.S0)
+
+
+from matplotlib import pyplot as plt
+
+
+class Plot:
+    def __init__(self, x=0.5):
+        self.x = x
+
+    def density(self, HD):
+        fig, (ax0) = plt.subplots(1, 1, figsize=(6, 4))
+
+        # density q_m
+        ax0.plot(HD.M, HD.q_M)
+        ax0.set_xlabel("Moneyness")
+        ax0.set_ylabel("historical density")
+        ax0.set_xlim(1 - self.x, 1 + self.x)
+
+        plt.tight_layout()
+        return fig

@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 from matplotlib import pyplot as plt
-
 from spd_trading import risk_neutral_density as rnd
 from spd_trading import historical_density as hd
 from spd_trading import kernel as ker
@@ -18,7 +17,7 @@ evaluation_S0 = hd_input_data.loc[
     hd_input_data.date_str == evaluation_day, "price"
 ].item()  # either take from index or replace by other value
 
-# ----------------------------------------------------------------------------------------------------------------- MAIN
+# --------------------------------------------------------- RISK NEUTRAL DENSITY
 RND = rnd.Calculator(
     data=rnd_input_data,
     tau_day=evaluation_tau,
@@ -27,12 +26,13 @@ RND = rnd.Calculator(
     n_sections=15,
     loss="MSE",
     kernel="gaussian",
+    h_m=0.088,  # set None if unknown, then `bandwidth_cv`
+    h_k=215.068,  # set None if unknown, then `bandwidth_cv`
+    h_m2=0.036,  # set None if unknown, then `bandwidth_cv`
 )
 RND.calc_rnd()
 
-RndPlot = rnd.Plot()  # Rookley Method algorithm plot
-fig_method = RndPlot.rookleyMethod(RND)
-
+# ----------------------------------------------------------- HISTORICAL DENSITY
 HD = hd.Calculator(
     data=hd_input_data,
     S0=evaluation_S0,
@@ -45,6 +45,7 @@ HD = hd.Calculator(
 )
 HD.get_hd(variate=True)
 
+# ----------------------------------------------------------------------- KERNEL
 TradingPlot = ker.Plot()  # kernel plot - comparison of rnd and hd
 fig_strategy = TradingPlot.kernelplot(RND, HD)
 

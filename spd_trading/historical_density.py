@@ -290,6 +290,7 @@ class Plot:
         ax0.set_xlabel("Moneyness")
         ax0.set_ylabel("historical density")
         ax0.set_xlim(1 - self.x, 1 + self.x)
+        ax0.set_ylim(0)
 
         plt.tight_layout()
         return fig

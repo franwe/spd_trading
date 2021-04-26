@@ -26,7 +26,7 @@ RND = rnd.Calculator(
 )
 RND.calc_rnd()
 
-RndPlot = rnd.Plot()  # Rookley Method algorithm plot
+RndPlot = rnd.Plot(x=0.35)  # Rookley Method algorithm plot
 fig_method = RndPlot.rookleyMethod(RND)
 
 plt.show()

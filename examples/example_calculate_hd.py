@@ -24,7 +24,7 @@ HD = hd.Calculator(
 )
 HD.get_hd(variate=True)
 
-HdPlot = hd.Plot()  # Rookley Method algorithm plot
+HdPlot = hd.Plot(x=0.35)  # Rookley Method algorithm plot
 fig_denstiy = HdPlot.density(HD)
 
 plt.show()

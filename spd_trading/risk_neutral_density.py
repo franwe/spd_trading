@@ -339,7 +339,7 @@ class Plot:
             RND (spd_trading.risk_neutral_density.Calculator): Instance of class ``spd_trading.risk_neutral_density.Calculator``.
 
         Returns:
-            plt.figure: Matplotlib figure.
+            Figure: Matplotlib figure.
         """
         fig, (ax0, ax1, ax2, ax3) = plt.subplots(1, 4, figsize=(12, 4))
 
@@ -356,13 +356,13 @@ class Plot:
         ax1.plot(RND.M_smile, RND.second)
         ax1.set_xlabel("Moneyness")
         ax1.set_xlim(1 - self.x, 1 + self.x)
-        ax1.set_ylim(-4)
 
         # density q_k
         ax2.scatter(RND.data.K, RND.data.q, c="r", s=4)
         ax2.plot(RND.K, RND.q_K)
         ax2.set_xlabel("Strike Price")
         ax2.set_ylabel("risk neutral density")
+        ax2.set_ylim(0)
 
         # density q_m
         ax3.scatter(RND.data.M, RND.data.q_M, c="r", s=4)
@@ -370,6 +370,7 @@ class Plot:
         ax3.set_xlabel("Moneyness")
         ax3.set_ylabel("risk neutral density")
         ax3.set_xlim(1 - self.x, 1 + self.x)
+        ax3.set_ylim(0)
 
         plt.tight_layout()
         return fig

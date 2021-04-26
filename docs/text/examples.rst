@@ -36,6 +36,8 @@ Use the class ``risk_neutral_density.Calculator`` in order to estimate the RND v
     plt.show()
 
 .. image:: ../_static/example_rnd.png
+    :height: 250
+    :align: center
 
 Estimate Historical Density with ``historical_density.Calculator``
 ------------------------------------------------------------------
@@ -73,7 +75,8 @@ Use the class ``historical_density.Calculator`` in order to estimate the HD via 
     plt.show()
 
 .. image:: ../_static/example_hd.png
-
+    :height: 250
+    :align: center
 
 Calculate and Plot Kernel with ``kernel.Plot``
 ----------------------------------------------------------------
@@ -126,10 +129,21 @@ Estimate RND and HD as shown in the previous examples, then use ``kernel.Plot`` 
     )
     HD.get_hd(variate=True)
 
-    # -------------------------------------------------------------------------- KERNEL
-    TradingPlot = ker.Plot()         # kernel plot - comparison of rnd and hd
-    fig_strategy = TradingPlot.kernelplot(RND, HD)
-
-    plt.show()
+    # ----------------------------------------------------------------------- KERNEL
+    Kernel = ker.Calculator(
+        tau_day=evaluation_tau, 
+        date=evaluation_day, 
+        RND=RND, 
+        HD=HD, 
+        similarity_threshold=0.15, 
+        cut_tail_percent=0.02
+    )
+    Kernel.calc_kernel()
+    Kernel.calc_trading_intervals()
+    
+    TradingPlot = ker.Plot(x=0.35)  # kernel plot - comparison of rnd and hd
+    fig_strategy = TradingPlot.kernelplot(Kernel)
 
 .. image:: ../_static/example_kernel.png
+    :height: 250
+    :align: center

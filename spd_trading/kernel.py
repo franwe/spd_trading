@@ -7,6 +7,29 @@ from .utils.smoothing import interpolate_to_same_interval, remove_tails
 
 
 class Calculator:
+    """The Calculator Class for the Pricing Kernel.
+
+    Stores all relevant parameters for traceability and reproducability.
+    :math:`K=\\frac{rnd}{hd}`
+
+    Args:
+        tau_day (int): Time to maturity in days (tau * 365)
+        date (str): Date of the option table.
+        RND (spd_trading.risk_neutral_density.Calculator): Trained instance of class ``spd_trading.risk_neutral_density.Calculator``.
+        HD (spd_trading.historical_density.Calculator): Trained instance of class ``spd_trading.historical_density.Calculator``.
+        similarity_threshold (float, optional): Creates similarity area around 1. If densities are too similar, the Kernel is K=1.
+            Defaults to 0.15.
+        cut_tail_percent (float, optional): Percent threshold of when to cut off tails. Defaults to 0.02.
+
+    Attributes:
+        M (np.array): Moneyness
+        rnd_curve (np.array): Risk Neutral Density interpolated to M-Values
+        hd_curve (np.array): Historical Density interpolated to M-Values
+        kernel (np.array): Kernel
+        sell_intervals (list of tuples): M-intervals for which to sell options according to kernel
+        buy_intervals (list of tuples): M-intervals for which to buy options according to kernel
+    """
+
     def __init__(self, tau_day, date, RND, HD, similarity_threshold=0.15, cut_tail_percent=0.02):
         self.tau_day = tau_day
         self.date = date
@@ -17,8 +40,8 @@ class Calculator:
 
         # parameters that are created during run
         self.M = None
-        self.rnd = None
-        self.hd = None
+        self.rnd_curve = None
+        self.hd_curve = None
         self.kernel = None
         self.sell_intervals = None
         self.buy_intervals = None
@@ -30,17 +53,21 @@ class Calculator:
         | Finally calculates the Kernel: :math:`K = \\frac{rnd}{hd}`.
 
         """
-        self.hd, self.rnd, self.M = interpolate_to_same_interval(
+        self.hd_curve, self.rnd_curve, self.M = interpolate_to_same_interval(
             self.HD.M,
             self.HD.q_M,
             self.RND.M,
             self.RND.q_M,
             interval=[self.RND.data.M.min() * 0.99, self.RND.data.M.max() * 1.01],
         )
-        self.rnd, self.hd, self.M = remove_tails(self.rnd, self.hd, self.M, self.cut_tail_percent)
-        self.hd, self.rnd, self.M = remove_tails(self.hd, self.rnd, self.M, self.cut_tail_percent)
+        self.rnd_curve, self.hd_curve, self.M = remove_tails(
+            self.rnd_curve, self.hd_curve, self.M, self.cut_tail_percent
+        )
+        self.hd_curve, self.rnd_curve, self.M = remove_tails(
+            self.hd_curve, self.rnd_curve, self.M, self.cut_tail_percent
+        )
 
-        self.kernel = self.rnd / self.hd
+        self.kernel = self.rnd_curve / self.hd_curve
 
     def _M_bounds_from_list(self, lst, df):
         groups = [[i for i, _ in group] for key, group in groupby(enumerate(lst), key=itemgetter(1)) if key]
@@ -50,6 +77,7 @@ class Calculator:
         return M_bounds
 
     def calc_trading_intervals(self):
+        """Determines the Moneyness intervalls for which to buy and sell options according to the kernel."""
         df = pd.DataFrame({"M": self.M, "K": self.kernel})
         df["buy"] = df.K < (1 - self.similarity_threshold)
         df["sell"] = df.K > (1 + self.similarity_threshold)
@@ -59,10 +87,30 @@ class Calculator:
 
 
 class Plot:
+    """The Plotting class for Kernel.
+
+    Args:
+        x (float, optional): The Moneyness interval for the plots. :math:`M = [1-x, 1+x]`. Defaults to 0.5.
+    """
+
     def __init__(self, x=0.5):
         self.x = x
 
     def kernelplot(self, Kernel):
+        """Visualization of computation of the Kernel and its derived trading intervals.
+
+        | Left: Risk Neutral Density (red line) and Historical Density (blue line) on evaluation day, option data is
+            represented as dots (red: calls, blue: puts).
+        | Middle: Construction of Trading Strategy based on the Pricing Kernel. The Pricing Kernel (black line)
+            indicates whether options should be bought (red interval) or sold (blue interval).
+            In grey the similarity area around :math:`K=1`.
+
+        Args:
+            Kernel (spd_trading.kernel.Calculator): Instance of class ``spd_trading.kernel.Calculator``.
+
+        Returns:
+            Figure: Matplotlib figure.
+        """
         day = Kernel.date
         tau_day = Kernel.tau_day
         call_mask = Kernel.RND.data.option == "C"
@@ -73,8 +121,8 @@ class Plot:
         # ---------------------------------------------------------------------------------------- Moneyness - Moneyness
         ax = axes[0]
         ax.scatter(Kernel.RND.data.M, Kernel.RND.data.q_M, 5, c=Kernel.RND.data.color)
-        ax.plot(Kernel.M, Kernel.rnd, "-", c="r")
-        ax.plot(Kernel.M, Kernel.hd, "-", c="b")
+        ax.plot(Kernel.M, Kernel.rnd_curve, "-", c="r")
+        ax.plot(Kernel.M, Kernel.hd_curve, "-", c="b")
 
         ax.text(
             0.99,

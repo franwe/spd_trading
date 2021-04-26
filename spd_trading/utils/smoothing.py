@@ -46,6 +46,7 @@ def remove_tails(y_base, y_other, X, cut_tail_percent):
             cut off
         y_other (np.array): Another function that will be cut at the same places as the reference function.
         X (np.array): The X values of the functions. Need to be cut also.
+        cut_tail_percent (float): Percent threshold of when to cut off tails.
 
     Returns:
         tuple of np.arrays: The shortened arrays in the same order as input.

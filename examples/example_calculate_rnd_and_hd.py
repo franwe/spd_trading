@@ -46,7 +46,13 @@ HD = hd.Calculator(
 HD.get_hd(variate=True)
 
 # ----------------------------------------------------------------------- KERNEL
-TradingPlot = ker.Plot()  # kernel plot - comparison of rnd and hd
-fig_strategy = TradingPlot.kernelplot(RND, HD)
+Kernel = ker.Calculator(
+    tau_day=evaluation_tau, date=evaluation_day, RND=RND, HD=HD, similarity_threshold=0.15, cut_tail_percent=0.02
+)
+Kernel.calc_kernel()
+Kernel.calc_trading_intervals()
+
+TradingPlot = ker.Plot(x=0.35)  # kernel plot - comparison of rnd and hd
+fig_strategy = TradingPlot.kernelplot(Kernel)
 
 plt.show()

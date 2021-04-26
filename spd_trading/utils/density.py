@@ -81,23 +81,3 @@ def density_trafo_K2M(K, q_K, S):
         q_M[i] = S / (m ** 2) * q_K(S / m)
 
     return M, q_M
-
-
-def hd_rnd_domain(HD, RND, interval=[0.5, 1.5]):
-    """Interpolates HD and RND densities (q_M) to the same interval, especially same interval values!
-
-    Args:
-        HD (class): hd.Calculator class, must contain attributes M and q_M
-        RND (class): rnd.Calculator class, must contain attributes M and q_M
-        interval (list, optional): Interval in which the densities are interpolated. Defaults to [0.5, 1.5].
-
-    Returns:
-        [tuple of np.arrays]: Interpolated densities hd, rnd and their common M-values.
-    """
-    _, HD_spline, _ = bspline(HD.M, HD.q_M, sections=15, degree=2)
-    _, RND_spline, _ = bspline(RND.M, RND.q_M, sections=15, degree=2)
-    M = np.linspace(interval[0], interval[1], 100)
-
-    hd = HD_spline(M)
-    rnd = RND_spline(M)
-    return hd, rnd, M

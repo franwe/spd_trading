@@ -234,7 +234,7 @@ class Calculator:
         The final result is saved in self.M, self.q_M
 
         | step 0 : fit iv-smile to iv-over-M option values
-        | step 1 : alculate spd for every option-point "Rookley's method"
+        | step 1 : calculate spd for every option-point "Rookley's method"
         | step 2 : Rookley results (points in K-domain) - fit density curve
         | step 3 : transform density POINTS from K- to M-domain
         | step 4 : density points in M-domain - fit density curve
@@ -316,10 +316,31 @@ from matplotlib import pyplot as plt
 
 
 class Plot:
+    """The Plotting class for Risk Neutral Density.
+
+    Args:
+        x (float, optional): The Moneyness interval for the plots. :math:`M = [1-x, 1+x]`. Defaults to 0.5.
+    """
+
     def __init__(self, x=0.5):
+
         self.x = x
 
     def rookleyMethod(self, RND):
+        """Visualization of computation of RND.
+
+        | Left: Option Data. Use Local Polynomial Estimation to fit :math:`V(M):=\sigma(M)` curve to the implied volatility.
+        | Middle left: fitted implied volatility and its derivatives
+            (blue: :math:`V(M)`, orange: :math:`V'(M)` and green: :math:`V''(M)`), necessary for Rookley's Method.
+        | Middle right: RND from Rookley's Method in strike price domain.
+        | Right: RND from Rookley's Method in moneyness domain (after Density Transformation from K- to M-domain).
+
+        Args:
+            RND (spd_trading.risk_neutral_density.Calculator): Instance of class ``spd_trading.risk_neutral_density.Calculator``.
+
+        Returns:
+            plt.figure: Matplotlib figure.
+        """
         fig, (ax0, ax1, ax2, ax3) = plt.subplots(1, 4, figsize=(12, 4))
 
         # smile

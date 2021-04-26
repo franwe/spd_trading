@@ -20,15 +20,14 @@ import shutil
 version = "0.1.1"
 
 __location__ = os.path.join(os.getcwd(), os.path.dirname(inspect.getfile(inspect.currentframe())))
-
 print("my location: ", __location__)
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-
-sys.path.insert(0, os.path.abspath("./../"))  # readthedocs
-# sys.path.insert(0, os.path.abspath("."))  # local
+sys.path.insert(0, os.path.join(__location__, ".."))
 autodoc_mock_imports = [".", "utils"]
+exclude_patterns = ["**setup**", "**config**"]
 
 # -- Run sphinx-apidoc ------------------------------------------------------
 # This hack is necessary since RTD does not issue `sphinx-apidoc` before running
@@ -44,7 +43,9 @@ except ImportError:
     from sphinx import apidoc
 
 output_dir = os.path.join(__location__, "../docs/api")
-module_dir = os.path.join(__location__, "../spd_trading")
+# module_dir = os.path.join(__location__, "../spd_trading")
+module_dir = os.path.normpath(__location__ + os.sep + os.pardir)
+
 print("my module_dir location: ", module_dir)
 
 try:
@@ -56,8 +57,8 @@ try:
     import sphinx
     from pkg_resources import parse_version
 
-    cmd_line_template = "sphinx-apidoc -f -o {outputdir} {moduledir} "
-    cmd_line = cmd_line_template.format(outputdir=output_dir, moduledir=module_dir)
+    cmd_line_template = "sphinx-apidoc -f -o {outputdir} {moduledir} {excludepatterns}"
+    cmd_line = cmd_line_template.format(outputdir=output_dir, moduledir=module_dir, excludepatterns=exclude_patterns)
 
     args = cmd_line.split(" ")
     if parse_version(sphinx.__version__) >= parse_version("1.7"):

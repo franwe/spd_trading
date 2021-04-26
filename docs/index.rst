@@ -1,5 +1,4 @@
 Welcome to spd_trading's documentation!
-
 ================================================================
 
 .. include:: text/intro.rst
@@ -12,7 +11,7 @@ Welcome to spd_trading's documentation!
    Install <text/install>
    Examples <text/examples>
    Module Reference <api/modules>
-   License <license>
+   License <text/license>
 
 
 

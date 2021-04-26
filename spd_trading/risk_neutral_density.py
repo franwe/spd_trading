@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from scipy.stats import norm
 from statsmodels.nonparametric.bandwidths import bw_silverman
@@ -209,7 +210,7 @@ class Calculator:
                 "bandwidths": cv_results["fine results"]["bandwidths"],
                 "MSE": cv_results["fine results"]["MSE"],
             }
-            print(f"Optimal Bandwidth: {parameters['h']}")
+            logging.info(f"Optimal Bandwidth: {parameters['h']}")
 
         else:
             parameters = {
@@ -241,6 +242,7 @@ class Calculator:
         | (All fits are obtained by local polynomial estimation)
         """
         # step 0: fit iv-smile to iv-over-M option values
+        logging.info("fit iv-smile to iv-over-M option values")
         X = np.array(self.data.M)
         y = np.array(self.data.iv)
         results = self.curve_fit(
@@ -255,14 +257,14 @@ class Calculator:
         self.second = results["fit"]["second"]
 
         # ------------------------------------ B-SPLINE on SMILE, FIRST, SECOND
-        print("fit bspline to derivatives for rookley method")
+        logging.info("fit bspline to derivatives for rookley method")
         pars, spline, points = bspline(self.M_smile, self.smile, sections=8, degree=3)
         # derivatives
         first_fct = spline.derivative(1)
         second_fct = spline.derivative(2)
 
         # step 1: calculate spd for every option-point "Rookley's method"
-        print("calculate q_K (Rookley Method)")
+        logging.info("calculate q_K (Rookley Method)")
         self.data["q"] = self.data.apply(
             lambda row: rookley_method(
                 row.M,
@@ -278,7 +280,7 @@ class Calculator:
         )
 
         # step 2: Rookley results (points in K-domain) - fit density curve
-        print("locpoly fit to rookley result q_K")
+        logging.info("locpoly fit to rookley result q_K")
         X = np.array(self.data.K)
         y = np.array(self.data.q)
 
@@ -292,11 +294,11 @@ class Calculator:
         self.K = results["fit"]["X"]
 
         # step 3: transform density POINTS from K- to M-domain
-        print("density transform rookley points q_K to q_M")
+        logging.info("density transform rookley points q_K to q_M")
         self.data["q_M"] = pointwise_density_trafo_K2M(self.K, self.q_K, self.data.S, self.data.M)
 
         # step 4: density points in M-domain - fit density curve
-        print("locpoly fit to q_M")
+        logging.info("locpoly fit to q_M")
         X = np.array(self.data.M)
         y = np.array(self.data.q_M)
 

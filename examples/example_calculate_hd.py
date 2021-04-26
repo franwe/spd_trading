@@ -18,9 +18,10 @@ HD = hd.Calculator(
     garch_data_folder=os.path.join(".", "examples", "data"),
     tau_day=evaluation_tau,
     date=evaluation_day,
-    n=400,
-    M=5000,
-    overwrite=False,
+    n_fits=400,
+    simulations=5000,
+    overwrite_model=True,
+    overwrite_simulations=True,
 )
 HD.get_hd(variate=True)
 

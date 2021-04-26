@@ -5,18 +5,31 @@ import time
 import copy
 import pickle
 import os
+import logging
 
 from .utils.density import density_estimation
 
 
 class GARCH:
+    """The GARCH model class, which fits a model to the historical data and simulates sample paths based on that model
+
+    Args:
+        data ([type]): [description]
+        data_name ([type]): [description]
+        n_fits ([type]): [description]
+        garch_data_folder ([type]): [description]
+        overwrite_model (bool, optional): [description]. Defaults to True.
+        window_length (int, optional): [description]. Defaults to 365.
+        z_h (float, optional): [description]. Defaults to 0.1.
+    """
+
     def __init__(
         self,
         data,
         data_name,
-        n,
+        n_fits,
         garch_data_folder,
-        overwrite_garchmodel=False,
+        overwrite_model=True,
         window_length=365,
         z_h=0.1,
     ):
@@ -24,24 +37,34 @@ class GARCH:
         self.z_h = z_h
         self.data_name = data_name
         self.window_length = window_length
-        self.n = n
-        self.no_of_paths_to_save = 50
-        self.overwrite_garchmodel = overwrite_garchmodel
-        self.filename_garchmodel = os.path.join(
+        self.n_fits = n_fits
+        self.overwrite_model = overwrite_model
+        self.filename_model = os.path.join(
             garch_data_folder,
-            "GARCH_Model_{}_window_length-{}_n-{}".format(self.data_name, self.window_length, self.n),
+            "GARCH_Model_{}_window_length-{}_n-{}".format(self.data_name, self.window_length, self.n_fits),
         )
 
-    def load(self):
-        with open(self.filename_garchmodel, "rb") as f:
+        # parameters that are created during run
+        self.parameters = None
+        # self.parameter_bounds = None
+        self.e_process = None
+        self.z_process = None
+        self.sigma2_process = None
+        self.z_values = None
+        self.z_dens = None
+        self.all_summed_returns = None
+        self.all_tau_mu = None
+
+    def _load(self):
+        with open(self.filename_model, "rb") as f:
             tmp_dict = pickle.load(f)
             f.close()
         self.__dict__.clear()
         self.__dict__.update(tmp_dict)
         return
 
-    def save(self):
-        with open(self.filename_garchmodel, "wb") as f:
+    def _save(self):
+        with open(self.filename_model, "wb") as f:
             pickle.dump(self.__dict__, f, 2)
             f.close()
         return
@@ -65,25 +88,22 @@ class GARCH:
         return res, pars, std_err
 
     def fit_GARCH(self):
-        if os.path.exists(self.filename_garchmodel) and (self.overwrite_garchmodel == False):
-            print(
-                " -------------- use existing GARCH model: ",
-                self.filename_garchmodel,
-            )
+        if os.path.exists(self.filename_model) and (self.overwrite_model == False):
+            logging.info(f" -------------- use existing GARCH model: {self.filename_model}")
             return
-        start = self.window_length + self.n
-        end = self.n
+        start = self.window_length + self.n_fits
+        end = self.n_fits
 
-        parameters = np.zeros((self.n, 4))
-        parameter_bounds = np.zeros((self.n, 4))
+        parameters = np.zeros((self.n_fits, 4))
+        # parameter_bounds = np.zeros((self.n, 4))
         z_process = []
         e_process = []
         sigma2_process = []
-        for i in range(0, self.n):
+        for i in range(0, self.n_fits):
             window = self.data[end - i : start - i]
             data = window - np.mean(window)
 
-            res, parameters[i, :], parameter_bounds[i, :] = self._GARCH_fit(data)
+            res, parameters[i, :], _ = self._GARCH_fit(data)
 
             _, omega, alpha, beta = [
                 res.params["mu"],
@@ -106,7 +126,7 @@ class GARCH:
             sigma2_process.append(sigma2_t)
 
         self.parameters = parameters
-        self.parameter_bounds = parameter_bounds
+        #  self.parameter_bounds = parameter_bounds
         self.e_process = e_process
         self.z_process = z_process
         self.sigma2_process = sigma2_process
@@ -116,8 +136,8 @@ class GARCH:
         h_dyn = self.z_h * (np.max(z_process) - np.min(z_process))
         self.z_dens = density_estimation(np.array(z_process), np.array(self.z_values), h=h_dyn).tolist()
 
-        print("------------- save GARCH model: ", self.filename_garchmodel)
-        self.save()
+        logging.info(f"------------- save GARCH model: {self.filename_model}")
+        self._save()
         return
 
     def _GARCH_simulate(self, pars, horizon):
@@ -147,52 +167,49 @@ class GARCH:
         new_pars = []
         i = 0
         for par, bound in zip(pars, bounds):
-            var = bound ** 2 / self.n
+            var = bound ** 2 / self.n_fits
             new_par = np.random.normal(par, var, 1)[0]
             if (new_par <= 0) and (i >= 1):
-                print("new_par too small ", new_par)
+                logging.warning(f"new_par too small {new_par}")
                 new_par = 0.01
             new_pars.append(new_par)
             i += 1
         return new_pars
 
     def simulate_paths(self, horizon, M, variate=True):
-        print(" -------------- simulate paths for: ", self.data_name, horizon, M)
-        if os.path.exists(self.filename_garchmodel) and (self.overwrite_garchmodel == False):
-            print(
-                "    ----------- use existing GARCH model: ",
-                self.filename_garchmodel,
-            )
+        logging.info(f" -------------- simulate paths for: {self.data_name}, {horizon}, {M}")
+        if os.path.exists(self.filename_model) and (self.overwrite_model == False):
+            logging.info(f"    ----------- use existing GARCH model: {self.filename_model}")
         else:
-            print("    ----------- fit new GARCH model")
+            logging.info("    ----------- fit new GARCH model")
             self.fit_GARCH()
 
-        self.load()
+        self._load()
         pars = np.mean(self.parameters, axis=0).tolist()  # mean
         bounds = np.std(self.parameters, axis=0).tolist()  # std of mean par
-        print("garch parameters :  ", pars)
+        logging.info(f"garch parameters : {pars}")
         np.random.seed(1)  # for reproducability in _variate_pars()
 
         new_pars = copy.deepcopy(pars)  # set pars for first round of simulation
-        save_sigma = np.zeros((self.no_of_paths_to_save, horizon))
-        save_e = np.zeros((self.no_of_paths_to_save, horizon))
+        # save_sigma = np.zeros((self.no_of_paths_to_save, horizon))
+        # save_e = np.zeros((self.no_of_paths_to_save, horizon))
         all_summed_returns = np.zeros(M)
         all_tau_mu = np.zeros(M)
         tick = time.time()
         for i in range(M):
             if (i + 1) % (M * 0.1) == 0:
-                print("{}/{} - runtime: {} min".format(i + 1, M, round((time.time() - tick) / 60)))
+                logging.info(f"{i + 1}/{M} - runtime: {round((time.time() - tick) / 60)} min")
             if ((i + 1) % (M * 0.05) == 0) & variate:
                 new_pars = self._variate_pars(pars, bounds)
             sigma2, e = self._GARCH_simulate(new_pars, horizon)
             all_summed_returns[i] = np.sum(e)
             all_tau_mu[i] = horizon * pars[0]
-            if i < self.no_of_paths_to_save:
-                save_sigma[i, :] = sigma2
-                save_e[i, :] = e
+            # if i < self.no_of_paths_to_save:
+            #    save_sigma[i, :] = sigma2
+            #    save_e[i, :] = e
 
-        self.save_sigma = save_sigma
-        self.save_e = save_e
+        # self.save_sigma = save_sigma
+        # self.save_e = save_e
         self.all_summed_returns = all_summed_returns
         self.all_tau_mu = all_tau_mu
         return all_summed_returns, all_tau_mu
@@ -201,46 +218,54 @@ class GARCH:
 # ----------------------------------------------------------------------------------------------------------- CALCULATOR
 import pandas as pd
 
-from .utils.density import density_trafo_K2M
-
 
 class Calculator(GARCH):
     def __init__(
         self,
         data,
-        S0,
-        garch_data_folder,
         tau_day,
         date,
-        n,
+        S0,
+        garch_data_folder,
+        n_fits,
         cutoff=0.5,
-        overwrite=True,
+        overwrite_model=True,
+        overwrite_simulations=True,
         target="price",
         window_length=365,
         h=0.15,
-        M=5000,
+        simulations=5000,
     ):
         self.data = data
-        self.target = target
-        self.S0 = S0
         self.tau_day = tau_day
         self.date = date
+        self.S0 = S0
         self.garch_data_folder = garch_data_folder
         self.cutoff = cutoff
-        self.overwrite = overwrite
-        self.log_returns = self._get_log_returns()
-        self.M = M
+        self.overwrite_simulations = overwrite_simulations
+        self.target = target
+        self.simulations = simulations
         self.h = h
+
+        # parameters that are created during run
+        self.log_returns = self._get_log_returns()
         self.GARCH = GARCH(
             data=self.log_returns,
             window_length=window_length,
             data_name=self.date,
-            n=n,
+            n_fits=n_fits,
+            overwrite_model=overwrite_model,
             garch_data_folder=self.garch_data_folder,
             z_h=0.1,
         )
+        self.ST = None
+        self.K = None
+        self.q_K = None
+        self.M = None
+        self.q_M = None
 
     def _get_log_returns(self):
+        """Calculate logarithmic 1-day returns from data timeseries."""
         n = self.data.shape[0]
         data = self.data.reset_index()
         first = data.loc[: n - 2, self.target].reset_index()
@@ -254,13 +279,14 @@ class Calculator(GARCH):
 
     def get_hd(self, variate=True):
         self.filename = "T-{}_{}_Ksim.csv".format(self.tau_day, self.date)
-        # simulate M paths
-        if os.path.exists(self.garch_data_folder + self.filename) and (self.overwrite == False):
-            print("-------------- use existing Simulations ", self.filename)
+        if os.path.exists(os.path.join(self.garch_data_folder, self.filename)) and (
+            self.overwrite_simulations == False
+        ):
+            logging.info(f"-------------- use existing Simulations {self.filename}")
             pass
         else:
-            print("-------------- create new Simulations")
-            all_summed_returns, all_tau_mu = self.GARCH.simulate_paths(self.tau_day, self.M, variate)
+            logging.info("-------------- create new Simulations")
+            all_summed_returns, all_tau_mu = self.GARCH.simulate_paths(self.tau_day, self.simulations, variate)
             self.ST = self._calculate_path(all_summed_returns, all_tau_mu)
             pd.Series(self.ST).to_csv(os.path.join(self.garch_data_folder, self.filename), index=False)
 
@@ -269,10 +295,8 @@ class Calculator(GARCH):
         self.K = np.linspace(self.S0 * (1 - self.cutoff), self.S0 * (1 + self.cutoff), 100)
         self.q_K = density_estimation(S_arr, self.K, h=self.S0 * self.h)
         self.M = np.linspace((1 - self.cutoff), (1 + self.cutoff), 100)
-
         M_arr = np.array(self.S0 / self.ST)
         self.q_M = density_estimation(M_arr, self.M, h=self.h)
-        self.M2, self.q_M2 = density_trafo_K2M(self.K, self.q_K, self.S0)
 
 
 from matplotlib import pyplot as plt
@@ -287,6 +311,7 @@ class Plot:
 
         # density q_m
         ax0.plot(HD.M, HD.q_M)
+
         ax0.set_xlabel("Moneyness")
         ax0.set_ylabel("historical density")
         ax0.set_xlim(1 - self.x, 1 + self.x)

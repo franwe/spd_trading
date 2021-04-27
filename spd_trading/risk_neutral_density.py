@@ -333,7 +333,7 @@ class Plot:
     def rookleyMethod(self, RND):
         """Visualization of computation of RND.
 
-        | Left: Option Data. Use Local Polynomial Estimation to fit :math:`V(M):=\sigma(M)` curve to the implied volatility.
+        | Left: Option Data. Use Local Polynomial Estimation to fit :math:`V(M):=\\sigma(M)` curve to the implied volatility.
         | Middle left: fitted implied volatility and its derivatives
             (blue: :math:`V(M)`, orange: :math:`V'(M)` and green: :math:`V''(M)`), necessary for Rookley's Method.
         | Middle right: RND from Rookley's Method in strike price domain.

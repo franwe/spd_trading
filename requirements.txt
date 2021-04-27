@@ -1,1 +1,6 @@
+arch
 localpoly
+sklearn
+matplotlib
+statsmodels
+scipy

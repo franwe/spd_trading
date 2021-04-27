@@ -11,3 +11,13 @@ def hd_input_data():
 @pytest.fixture
 def rnd_input_data():
     return pd.read_csv(config.app_config.rnd_input_data_file)
+
+
+@pytest.fixture
+def evaluation_day():
+    return "2020-03-05"
+
+
+@pytest.fixture
+def evaluation_tau():
+    return 8

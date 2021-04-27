@@ -29,7 +29,7 @@ Set the logging level to `INFO` if status reports are of interest. ::
         h_k=215.068,                 # if unknow, use `localpoly.bandwidth_cv`
         h_m2=0.036,                  # for bandwidth optimization
     )
-    RND.calc_rnd()
+    RND.get_rnd()
 
     RndPlot = rnd.Plot()             # Rookley Method algorithm plot
     fig_method = RndPlot.rookleyMethod(RND)

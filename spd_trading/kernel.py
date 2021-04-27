@@ -133,13 +133,12 @@ class Plot:
             transform=ax.transAxes,
         )
         ax.set_xlim((1 - self.x), (1 + self.x))
-        # if y_lim:
-        #     ax.set_ylim(0, y_lim["M"])
         ax.set_ylim(0)
-        ax.vlines(1, 0, Kernel.RND.data.q_M.max())
-        ax.set_xlabel("Moneyness M")
+        ax.axvline(x=1, c="k", alpha=0.1)
+        ax.set_xlabel("Moneyness")
+        ax.set_ylabel("Density")
 
-        # -------------------------------------------------------------------------------------- Kernel K = q/p = rnd/hd
+        # -------------------------------------------------------------------------------------------- Kernel K = rnd/hd
         ax = axes[1]
         ax.plot(Kernel.M, Kernel.kernel, "-", c="k")
         ax.axhspan(1 - Kernel.similarity_threshold, 1 + Kernel.similarity_threshold, color="grey", alpha=0.1)

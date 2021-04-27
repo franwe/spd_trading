@@ -74,8 +74,8 @@ class GARCH:
     def fit(self):
         """Fits a GARCH(1,1) model to the data. This
 
-        For *n_fits* sliding windows, the parameters :math:`\Theta = (\omega, \alpha, \beta)` and the
-        distribution of innovations :math:`\mathcal{Z} = \left\{z_0, z_1, ...., z_T \right\}` are estimated.
+        For *n_fits* sliding windows, the parameters :math:`\\Theta = (\\omega, \\alpha, \\beta)` and the
+        distribution of innovations :math:`\\mathcal{Z} = \\left\\{z_0, z_1, ...., z_T \\right\\}` are estimated.
         The results are saved in *self*.
         """
         if os.path.exists(self.filename_model) and (self.overwrite_model == False):
@@ -328,10 +328,10 @@ class Calculator(GARCH):
 
         Args:
             simulated_log_returns (np.array): simulated log returns at horizon (also: maturity) :math:`\tau`
-            simulated_tau_mu (np.array): product of :math:`\tau \cdot \mu` for each simulation
+            simulated_tau_mu (np.array): product of :math:`\\tau \\cdot \\mu` for each simulation
 
         Returns:
-            np.array: Simulated prices of underlying at maturity :math:`\tau`
+            np.array: Simulated prices of underlying at maturity :math:`\\tau`
         """
         S_T = self.S0 * np.exp(simulated_log_returns / 100 + simulated_tau_mu / 100)
         return S_T

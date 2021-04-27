@@ -14,13 +14,13 @@ class GARCH:
     """The GARCH model class, which fits a model to the historical data and simulates sample paths based on that model
 
     Args:
-        data ([type]): [description]
-        data_name ([type]): [description]
-        n_fits ([type]): [description]
-        garch_data_folder ([type]): [description]
-        overwrite_model (bool, optional): [description]. Defaults to True.
-        window_length (int, optional): [description]. Defaults to 365.
-        z_h (float, optional): [description]. Defaults to 0.1.
+        data (np.array): The timeseries that should be fitted (usually log returns)
+        data_name (str): Name of the dataset, will be used in filename.
+        n_fits (int): How many sliding windows the data is devided into.
+        garch_data_folder (str): Path to folder where to save/load GARCH model.
+        overwrite_model (bool, optional): Whether to overwrite the GARCH model. Defaults to True.
+        window_length (int, optional): Length of each sliding window. Defaults to 365.
+        z_h (float, optional): Bandwidth *factor* for Kernel Density Estimation. Defaults to 0.1.
     """
 
     def __init__(
@@ -52,10 +52,11 @@ class GARCH:
         self.sigma2_process = None
         self.z_values = None
         self.z_dens = None
-        self.all_summed_returns = None
-        self.all_tau_mu = None
+        self.simulated_log_returns = None
+        self.simulated_tau_mu = None
 
     def _load(self):
+        """Loads a GARCH model."""
         with open(self.filename_model, "rb") as f:
             tmp_dict = pickle.load(f)
             f.close()
@@ -64,30 +65,19 @@ class GARCH:
         return
 
     def _save(self):
+        """Saves a GARCH model."""
         with open(self.filename_model, "wb") as f:
             pickle.dump(self.__dict__, f, 2)
             f.close()
         return
 
-    def _GARCH_fit(self, data, q=1, p=1):
-        model = arch_model(data, q=q, p=p)
-        res = model.fit(disp="off")
+    def fit(self):
+        """Fits a GARCH(1,1) model to the data. This
 
-        pars = (
-            res.params["mu"],
-            res.params["omega"],
-            res.params["alpha[1]"],
-            res.params["beta[1]"],
-        )
-        std_err = (
-            res.std_err["mu"],
-            res.std_err["omega"],
-            res.std_err["alpha[1]"],
-            res.std_err["beta[1]"],
-        )
-        return res, pars, std_err
-
-    def fit_GARCH(self):
+        For *n_fits* sliding windows, the parameters :math:`\Theta = (\omega, \alpha, \beta)` and the
+        distribution of innovations :math:`\mathcal{Z} = \left\{z_0, z_1, ...., z_T \right\}` are estimated.
+        The results are saved in *self*.
+        """
         if os.path.exists(self.filename_model) and (self.overwrite_model == False):
             logging.info(f" -------------- use existing GARCH model: {self.filename_model}")
             return
@@ -95,7 +85,6 @@ class GARCH:
         end = self.n_fits
 
         parameters = np.zeros((self.n_fits, 4))
-        # parameter_bounds = np.zeros((self.n, 4))
         z_process = []
         e_process = []
         sigma2_process = []
@@ -103,14 +92,17 @@ class GARCH:
             window = self.data[end - i : start - i]
             data = window - np.mean(window)
 
-            res, parameters[i, :], _ = self._GARCH_fit(data)
+            model = arch_model(data, q=1, p=1)
+            GARCH_fit = model.fit(disp="off")
 
-            _, omega, alpha, beta = [
-                res.params["mu"],
-                res.params["omega"],
-                res.params["alpha[1]"],
-                res.params["beta[1]"],
+            mu, omega, alpha, beta = [
+                GARCH_fit.params["mu"],
+                GARCH_fit.params["omega"],
+                GARCH_fit.params["alpha[1]"],
+                GARCH_fit.params["beta[1]"],
             ]
+            parameters[i, :] = [mu, omega, alpha, beta]
+
             if i == 0:
                 sigma2_tm1 = omega / (1 - alpha - beta)
             else:
@@ -126,7 +118,6 @@ class GARCH:
             sigma2_process.append(sigma2_t)
 
         self.parameters = parameters
-        #  self.parameter_bounds = parameter_bounds
         self.e_process = e_process
         self.z_process = z_process
         self.sigma2_process = sigma2_process
@@ -147,7 +138,7 @@ class GARCH:
             pars (tuple): (mu, omega, alpha, beta)
 
         Returns:
-            [type]: [description]
+            tuple of lists: simulated sigma2- and e-process
         """
         mu, omega, alpha, beta = pars
         burnin = horizon * 2
@@ -164,6 +155,17 @@ class GARCH:
         return sigma2[-horizon:], e[-horizon:]
 
     def _variate_pars(self, pars, bounds):
+        """Variation of parameters for fit of GARCH model.
+
+        The GARCH fit (pars) was obtained from *n_fits* moving windows and therefore varies itself.
+
+        Args:
+            pars (np.array): *n_fits* parameters of GARCH model
+            bounds (np.array): bounds to the parameters
+
+        Returns:
+            np.array: Slightly varied parameters.
+        """
         new_pars = []
         i = 0
         for par, bound in zip(pars, bounds):
@@ -176,43 +178,45 @@ class GARCH:
             i += 1
         return new_pars
 
-    def simulate_paths(self, horizon, M, variate=True):
-        logging.info(f" -------------- simulate paths for: {self.data_name}, {horizon}, {M}")
+    def simulate_paths(self, horizon, simulations, variate_GARCH_parameters=True):
+        """Monte Carlo Simulation - Simulate paths using the fitted GARCH(1,1) model.
+
+        Args:
+            horizon (int): How many steps of paths to simulate
+            variate (bool, optional): Whether GARCH parameters should be variated. Defaults to True.
+
+        Returns:
+            tuple: simulated_log_returns, simulated_tau_mu
+        """
+        logging.info(f" -------------- simulate paths for: {self.data_name}, {horizon}, {simulations}")
         if os.path.exists(self.filename_model) and (self.overwrite_model == False):
             logging.info(f"    ----------- use existing GARCH model: {self.filename_model}")
         else:
             logging.info("    ----------- fit new GARCH model")
-            self.fit_GARCH()
+            self.fit()
 
         self._load()
         pars = np.mean(self.parameters, axis=0).tolist()  # mean
-        bounds = np.std(self.parameters, axis=0).tolist()  # std of mean par
+        bounds = np.std(self.parameters, axis=0).tolist()  # std of parameters
         logging.info(f"garch parameters : {pars}")
         np.random.seed(1)  # for reproducability in _variate_pars()
 
         new_pars = copy.deepcopy(pars)  # set pars for first round of simulation
-        # save_sigma = np.zeros((self.no_of_paths_to_save, horizon))
-        # save_e = np.zeros((self.no_of_paths_to_save, horizon))
-        all_summed_returns = np.zeros(M)
-        all_tau_mu = np.zeros(M)
+        simulated_log_returns = np.zeros(simulations)
+        simulated_tau_mu = np.zeros(simulations)
         tick = time.time()
-        for i in range(M):
-            if (i + 1) % (M * 0.1) == 0:
-                logging.info(f"{i + 1}/{M} - runtime: {round((time.time() - tick) / 60)} min")
-            if ((i + 1) % (M * 0.05) == 0) & variate:
+        for i in range(simulations):
+            if (i + 1) % (simulations * 0.1) == 0:
+                logging.info(f"{i + 1}/{simulations} - runtime: {round((time.time() - tick) / 60)} min")
+            if ((i + 1) % (simulations * 0.05) == 0) & variate_GARCH_parameters:
                 new_pars = self._variate_pars(pars, bounds)
             sigma2, e = self._GARCH_simulate(new_pars, horizon)
-            all_summed_returns[i] = np.sum(e)
-            all_tau_mu[i] = horizon * pars[0]
-            # if i < self.no_of_paths_to_save:
-            #    save_sigma[i, :] = sigma2
-            #    save_e[i, :] = e
+            simulated_log_returns[i] = np.sum(e)
+            simulated_tau_mu[i] = horizon * pars[0]
 
-        # self.save_sigma = save_sigma
-        # self.save_e = save_e
-        self.all_summed_returns = all_summed_returns
-        self.all_tau_mu = all_tau_mu
-        return all_summed_returns, all_tau_mu
+        self.simulated_log_returns = simulated_log_returns  # summed because we have log-returns
+        self.simulated_tau_mu = simulated_tau_mu
+        return simulated_log_returns, simulated_tau_mu
 
 
 # ----------------------------------------------------------------------------------------------------------- CALCULATOR
@@ -220,6 +224,35 @@ import pandas as pd
 
 
 class Calculator(GARCH):
+    """The Calculator Class for the Historical Density.
+
+    The Historical Density is estimated via a Monte Carlo simulation, where the sample paths are simulated by a
+    GARCH(1,1) model.
+
+    Args:
+        data (np.array): Timeseries of the underlying.
+        tau_day (int): Time to maturity in days, also: *horizon*.
+        date (str): Evaluation date, the last day of timeseries.
+        S0 (float): Price of underlying at :math:`t=0`, which is on evaluation date
+        garch_data_folder (str): Path to folder where to save/load GARCH model.
+        n_fits (int): How many sliding windows the data is devided into.
+        overwrite_model (bool, optional): Whether to overwrite the GARCH model. Defaults to True.
+        overwrite_simulations (bool, optional): Whether to overwrite the simulations. Defaults to True.
+        target (str, optional): Column name of the timeseries. Defaults to "price".
+        window_length (int, optional): Length of each sliding window in GARCH fit. Defaults to 365.
+        h (float, optional): [description]. Defaults to 0.15.
+        simulations (int, optional): How many paths to simulate. Defaults to 5000.
+
+    Attributes:
+        log_returns ():
+        GARCH ():
+        ST ():
+        K ():
+        q_K ():
+        M ():
+        q_M ():
+    """
+
     def __init__(
         self,
         data,
@@ -236,6 +269,23 @@ class Calculator(GARCH):
         h=0.15,
         simulations=5000,
     ):
+        """[summary]
+
+        Args:
+            data ([type]): [description]
+            tau_day ([type]): [description]
+            date ([type]): [description]
+            S0 ([type]): [description]
+            garch_data_folder ([type]): [description]
+            n_fits ([type]): [description]
+            cutoff (float, optional): [description]. Defaults to 0.5.
+            overwrite_model (bool, optional): [description]. Defaults to True.
+            overwrite_simulations (bool, optional): [description]. Defaults to True.
+            target (str, optional): [description]. Defaults to "price".
+            window_length (int, optional): [description]. Defaults to 365.
+            h (float, optional): [description]. Defaults to 0.15.
+            simulations (int, optional): Bandwidth for Kernel Density Estimation. Defaults to 5000.
+        """
         self.data = data
         self.tau_day = tau_day
         self.date = date
@@ -273,11 +323,26 @@ class Calculator(GARCH):
         historical_returns = (second / first)[self.target]
         return np.log(historical_returns) * 100
 
-    def _calculate_path(self, all_summed_returns, all_tau_mu):
-        S_T = self.S0 * np.exp(all_summed_returns / 100 + all_tau_mu / 100)
+    def _calculate_path(self, simulated_log_returns, simulated_tau_mu):
+        """Calculates the underlyings' prices of maturity based on the simulations.
+
+        Args:
+            simulated_log_returns (np.array): simulated log returns at horizon (also: maturity) :math:`\tau`
+            simulated_tau_mu (np.array): product of :math:`\tau \cdot \mu` for each simulation
+
+        Returns:
+            np.array: Simulated prices of underlying at maturity :math:`\tau`
+        """
+        S_T = self.S0 * np.exp(simulated_log_returns / 100 + simulated_tau_mu / 100)
         return S_T
 
-    def get_hd(self, variate=True):
+    def get_hd(self, variate_GARCH_parameters=True):
+        """Estimates the Historical Density via a GARCH(1,1) model and Monte Carlo simulation.
+
+        Args:
+            variate_GARCH_parameters (bool, optional): Whether the GARCH parameters should be variated slightly during
+                the Monte Carlo Simulation. Defaults to True.
+        """
         self.filename = "T-{}_{}_Ksim.csv".format(self.tau_day, self.date)
         if os.path.exists(os.path.join(self.garch_data_folder, self.filename)) and (
             self.overwrite_simulations == False
@@ -286,8 +351,10 @@ class Calculator(GARCH):
             pass
         else:
             logging.info("-------------- create new Simulations")
-            all_summed_returns, all_tau_mu = self.GARCH.simulate_paths(self.tau_day, self.simulations, variate)
-            self.ST = self._calculate_path(all_summed_returns, all_tau_mu)
+            simulated_log_returns, simulated_tau_mu = self.GARCH.simulate_paths(
+                self.tau_day, self.simulations, variate_GARCH_parameters
+            )
+            self.ST = self._calculate_path(simulated_log_returns, simulated_tau_mu)
             pd.Series(self.ST).to_csv(os.path.join(self.garch_data_folder, self.filename), index=False)
 
         self.ST = pd.read_csv(os.path.join(self.garch_data_folder, self.filename))
@@ -295,25 +362,39 @@ class Calculator(GARCH):
         self.K = np.linspace(self.S0 * (1 - self.cutoff), self.S0 * (1 + self.cutoff), 100)
         self.q_K = density_estimation(S_arr, self.K, h=self.S0 * self.h)
         self.M = np.linspace((1 - self.cutoff), (1 + self.cutoff), 100)
-        M_arr = np.array(self.S0 / self.ST)
-        self.q_M = density_estimation(M_arr, self.M, h=self.h)
+        simulated_paths_in_moneyness = np.array(self.S0 / self.ST)
+        self.q_M = density_estimation(simulated_paths_in_moneyness, self.M, h=self.h)
 
 
 from matplotlib import pyplot as plt
 
 
 class Plot:
+    """The Plotting class for Historical Density.
+
+    Args:
+        x (float, optional): The Moneyness interval for the plots. :math:`M = [1-x, 1+x]`. Defaults to 0.5.
+    """
+
     def __init__(self, x=0.5):
         self.x = x
 
     def density(self, HD):
+        """Visualization of the Historical Density.
+
+        Args:
+            HD (spd_trading.historical_density.Calculator): Instance of class ``spd_trading.historical_density.Calculator``.
+
+        Returns:
+            Figure: Matplotlib figure.
+        """
         fig, (ax0) = plt.subplots(1, 1, figsize=(6, 4))
 
         # density q_m
         ax0.plot(HD.M, HD.q_M)
 
         ax0.set_xlabel("Moneyness")
-        ax0.set_ylabel("historical density")
+        ax0.set_ylabel("Historical Density")
         ax0.set_xlim(1 - self.x, 1 + self.x)
         ax0.set_ylim(0)
 

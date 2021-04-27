@@ -30,7 +30,7 @@ RND = rnd.Calculator(
     h_k=215.068,  # set None if unknown, then `bandwidth_cv`
     h_m2=0.036,  # set None if unknown, then `bandwidth_cv`
 )
-RND.calc_rnd()
+RND.get_rnd()
 
 # ----------------------------------------------------------- HISTORICAL DENSITY
 HD = hd.Calculator(
@@ -40,10 +40,9 @@ HD = hd.Calculator(
     tau_day=evaluation_tau,
     date=evaluation_day,
     n_fits=400,
-    simulations=50,
-    overwrite_simulations=False,
+    simulations=5000,
 )
-HD.get_hd(variate=True)
+HD.get_hd(variate_GARCH_parameters=True)
 
 # ----------------------------------------------------------------------- KERNEL
 Kernel = ker.Calculator(

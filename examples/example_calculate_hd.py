@@ -23,7 +23,7 @@ HD = hd.Calculator(
     overwrite_model=True,
     overwrite_simulations=True,
 )
-HD.get_hd(variate=True)
+HD.get_hd(variate_GARCH_parameters=True)
 
 HdPlot = hd.Plot(x=0.35)  # Rookley Method algorithm plot
 fig_denstiy = HdPlot.density(HD)

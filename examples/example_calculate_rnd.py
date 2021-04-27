@@ -24,7 +24,7 @@ RND = rnd.Calculator(
     h_k=215.068,  # set None if unknown, then `bandwidth_cv`
     h_m2=0.036,  # set None if unknown, then `bandwidth_cv`
 )
-RND.calc_rnd()
+RND.get_rnd()
 
 RndPlot = rnd.Plot(x=0.35)  # Rookley Method algorithm plot
 fig_method = RndPlot.rookleyMethod(RND)

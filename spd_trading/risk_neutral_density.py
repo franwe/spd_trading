@@ -166,7 +166,9 @@ class Calculator:
         self.second = None
 
     def curve_fit(self, X, y, h=None):
-        """Uses local polynomial estimation to create a fit and estimate its first and second derivative.
+        """Uses Local Polynomial Estimation to create a fit and estimate its first and second derivative.
+
+        Requires package ``localpoly`` for the fit.
         If no bandwidth h is given, first a Cross Validation for a range of bandwidths is performed. The final fit is
         performed with the optimal bandwidth (by MSE).
 
@@ -228,7 +230,7 @@ class Calculator:
         }
         return results
 
-    def calc_rnd(self):
+    def get_rnd(self):
         """Pipeline that calculates the Risk Neutral Density using Rookley's Method.
 
         Tools used: Local Polynomial Smoothing and Density Transformation.
@@ -349,7 +351,7 @@ class Plot:
         ax0.scatter(RND.data.M, RND.data.iv, c="r", s=4)
         ax0.plot(RND.M_smile, RND.smile)
         ax0.set_xlabel("Moneyness")
-        ax0.set_ylabel("implied volatility")
+        ax0.set_ylabel("Implied Volatility")
         ax0.set_xlim(1 - self.x, 1 + self.x)
 
         # derivatives
@@ -363,14 +365,14 @@ class Plot:
         ax2.scatter(RND.data.K, RND.data.q, c="r", s=4)
         ax2.plot(RND.K, RND.q_K)
         ax2.set_xlabel("Strike Price")
-        ax2.set_ylabel("risk neutral density")
+        ax2.set_ylabel("Risk Neutral Density")
         ax2.set_ylim(0)
 
         # density q_m
         ax3.scatter(RND.data.M, RND.data.q_M, c="r", s=4)
         ax3.plot(RND.M, RND.q_M)
         ax3.set_xlabel("Moneyness")
-        ax3.set_ylabel("risk neutral density")
+        ax3.set_ylabel("Risk Neutral Density")
         ax3.set_xlim(1 - self.x, 1 + self.x)
         ax3.set_ylim(0)
 

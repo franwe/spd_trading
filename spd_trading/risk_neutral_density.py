@@ -254,10 +254,8 @@ class Calculator:
         # ------------------------------------ B-SPLINE on SMILE, FIRST, SECOND
         logging.info("fit bspline to derivatives for rookley method")
         pars, smile_spline, points = bspline(self.smile["x"], self.smile["y"], sections=8, degree=3)
-        # derivatives
-        # TODO: why don't I use my derivatives here? test different results!
-        first_fct = smile_spline.derivative(1)
-        second_fct = smile_spline.derivative(2)
+        pars, first_spline, points = bspline(self.first["x"], self.first["y"], sections=8, degree=3)
+        pars, second_spline, points = bspline(self.second["x"], self.second["y"], sections=8, degree=3)
 
         # step 1: calculate spd for every option-point "Rookley's method"
         logging.info("calculate q_K (Rookley Method)")
@@ -267,8 +265,8 @@ class Calculator:
                 row.S,
                 row.K,
                 smile_spline(row.M),
-                first_fct(row.M),
-                second_fct(row.M),
+                first_spline(row.M),
+                second_spline(row.M),
                 self.r,
                 self.tau,
             ),

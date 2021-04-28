@@ -240,7 +240,7 @@ class Calculator(GARCH):
         overwrite_simulations (bool, optional): Whether to overwrite the simulations. Defaults to True.
         target (str, optional): Column name of the timeseries. Defaults to "price".
         window_length (int, optional): Length of each sliding window in GARCH fit. Defaults to 365.
-        h (float, optional): [description]. Defaults to 0.15.
+        h (float, optional): Bandwidth for Kernel Density Estimation. Defaults to 0.15.
         simulations (int, optional): How many paths to simulate. Defaults to 5000.
 
     Attributes:
@@ -269,23 +269,6 @@ class Calculator(GARCH):
         h=0.15,
         simulations=5000,
     ):
-        """[summary]
-
-        Args:
-            data ([type]): [description]
-            tau_day ([type]): [description]
-            date ([type]): [description]
-            S0 ([type]): [description]
-            garch_data_folder ([type]): [description]
-            n_fits ([type]): [description]
-            cutoff (float, optional): [description]. Defaults to 0.5.
-            overwrite_model (bool, optional): [description]. Defaults to True.
-            overwrite_simulations (bool, optional): [description]. Defaults to True.
-            target (str, optional): [description]. Defaults to "price".
-            window_length (int, optional): [description]. Defaults to 365.
-            h (float, optional): [description]. Defaults to 0.15.
-            simulations (int, optional): Bandwidth for Kernel Density Estimation. Defaults to 5000.
-        """
         self.data = data
         self.tau_day = tau_day
         self.date = date

@@ -141,3 +141,4 @@ dmypy.json
 /examples/data/GARCH*
 /examples/data/T*
 sample_config.yaml
+/tmp_venv/

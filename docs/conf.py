@@ -17,10 +17,9 @@ import shutil
 # which is published on read the docs: https://spd_trading.readthedocs.io/en/latest/
 # release = get_distribution("spd_trading").version
 # version = ".".join(release.split(".")[:2])
-version = "0.1.1"
+version = "0.1.0"
 
 __location__ = os.path.join(os.getcwd(), os.path.dirname(inspect.getfile(inspect.currentframe())))
-print("my location: ", __location__)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -43,10 +42,7 @@ except ImportError:
     from sphinx import apidoc
 
 output_dir = os.path.join(__location__, "../docs/api")
-# module_dir = os.path.join(__location__, "../spd_trading")
 module_dir = os.path.normpath(__location__ + os.sep + os.pardir)
-
-print("my module_dir location: ", module_dir)
 
 try:
     shutil.rmtree(output_dir)

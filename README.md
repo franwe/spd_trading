@@ -3,7 +3,7 @@
 This package estimates the Risk Neutral Density (RND) and Historical Density (HD) of an underlying and suggests a trading 
 strategy based on the Pricing Kernel:
 
-<center><a href="https://www.codecogs.com/eqnedit.php?latex=K=\frac{RND}{HD}" target="_blank"><img src="https://latex.codecogs.com/svg.latex?K=\frac{RND}{HD}" title="K=\frac{RND}{HD}" /></a></center>
+<a href="https://www.codecogs.com/eqnedit.php?latex=K=\frac{RND}{HD}" target="_blank"><img src="https://latex.codecogs.com/svg.latex?K=\frac{RND}{HD}" title="K=\frac{RND}{HD}" /></a>
 
 
 The **RND** is estimated by *Rookley's Method*, which uses the option table of one trading day. ``risk_neutral_density.Calculator.get_rnd``

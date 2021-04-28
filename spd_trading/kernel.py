@@ -22,12 +22,10 @@ class Calculator:
         cut_tail_percent (float, optional): Percent threshold of when to cut off tails. Defaults to 0.02.
 
     Attributes:
-        M (np.array): Moneyness
-        rnd_curve (np.array): Risk Neutral Density interpolated to M-Values
-        hd_curve (np.array): Historical Density interpolated to M-Values
+        rnd_curve (np.array): Risk Neutral Density
+        hd_curve (np.array): Historical Density
         kernel (np.array): Kernel
-        sell_intervals (list of tuples): M-intervals for which to sell options according to kernel
-        buy_intervals (list of tuples): M-intervals for which to buy options according to kernel
+        trading_intervals (dict of list of tuples): M-intervals for which to buy and sell options according to kernel
     """
 
     def __init__(self, tau_day, date, RND, HD, similarity_threshold=0.15, cut_tail_percent=0.02):
@@ -39,12 +37,10 @@ class Calculator:
         self.cut_tail_percent = cut_tail_percent
 
         # parameters that are created during run
-        self.M = None
         self.rnd_curve = None
         self.hd_curve = None
         self.kernel = None
-        self.sell_intervals = None
-        self.buy_intervals = None
+        self.trading_intervals = None
 
     def calc_kernel(self):
         """Calculates the Kernel.
@@ -53,37 +49,34 @@ class Calculator:
         | Finally calculates the Kernel: :math:`K = \\frac{rnd}{hd}`.
 
         """
-        self.hd_curve, self.rnd_curve, self.M = interpolate_to_same_interval(
-            self.HD.M,
+        self.hd_curve, self.rnd_curve = interpolate_to_same_interval(
             self.HD.q_M,
-            self.RND.M,
             self.RND.q_M,
             interval=[self.RND.data.M.min() * 0.99, self.RND.data.M.max() * 1.01],
         )
-        self.rnd_curve, self.hd_curve, self.M = remove_tails(
-            self.rnd_curve, self.hd_curve, self.M, self.cut_tail_percent
-        )
-        self.hd_curve, self.rnd_curve, self.M = remove_tails(
-            self.hd_curve, self.rnd_curve, self.M, self.cut_tail_percent
-        )
+        self.rnd_curve, self.hd_curve = remove_tails(self.rnd_curve, self.hd_curve, self.cut_tail_percent)
+        self.hd_curve, self.rnd_curve = remove_tails(self.hd_curve, self.rnd_curve, self.cut_tail_percent)
 
-        self.kernel = self.rnd_curve / self.hd_curve
+        kernel = self.rnd_curve["y"] / self.hd_curve["y"]
+        self.kernel = {"x": self.rnd_curve["x"], "y": kernel}
 
     def _M_bounds_from_list(self, lst, df):
         groups = [[i for i, _ in group] for key, group in groupby(enumerate(lst), key=itemgetter(1)) if key]
         M_bounds = []
         for group in groups:
-            M_bounds.append((df.M[group[0]], df.M[group[-1]]))
+            M_bounds.append((df.Moneyness[group[0]], df.Moneyness[group[-1]]))
         return M_bounds
 
     def calc_trading_intervals(self):
         """Determines the Moneyness intervalls for which to buy and sell options according to the kernel."""
-        df = pd.DataFrame({"M": self.M, "K": self.kernel})
-        df["buy"] = df.K < (1 - self.similarity_threshold)
-        df["sell"] = df.K > (1 + self.similarity_threshold)
+        df = pd.DataFrame({"Moneyness": self.kernel["x"], "kernel": self.kernel["y"]})
+        df["buy"] = df.kernel < (1 - self.similarity_threshold)
+        df["sell"] = df.kernel > (1 + self.similarity_threshold)
 
-        self.sell_intervals = self._M_bounds_from_list(df.sell.tolist(), df)
-        self.buy_intervals = self._M_bounds_from_list(df.buy.tolist(), df)
+        self.trading_intervals = {
+            "buy": self._M_bounds_from_list(df.buy.tolist(), df),
+            "sell": self._M_bounds_from_list(df.sell.tolist(), df),
+        }
 
 
 class Plot:
@@ -121,8 +114,8 @@ class Plot:
         # ---------------------------------------------------------------------------------------- Moneyness - Moneyness
         ax = axes[0]
         ax.scatter(Kernel.RND.data.M, Kernel.RND.data.q_M, 5, c=Kernel.RND.data.color)
-        ax.plot(Kernel.M, Kernel.rnd_curve, "-", c="r")
-        ax.plot(Kernel.M, Kernel.hd_curve, "-", c="b")
+        ax.plot(Kernel.rnd_curve["x"], Kernel.rnd_curve["y"], "-", c="r")
+        ax.plot(Kernel.hd_curve["x"], Kernel.hd_curve["y"], "-", c="b")
 
         ax.text(
             0.99,
@@ -140,11 +133,11 @@ class Plot:
 
         # -------------------------------------------------------------------------------------------- Kernel K = rnd/hd
         ax = axes[1]
-        ax.plot(Kernel.M, Kernel.kernel, "-", c="k")
+        ax.plot(Kernel.kernel["x"], Kernel.kernel["y"], "-", c="k")
         ax.axhspan(1 - Kernel.similarity_threshold, 1 + Kernel.similarity_threshold, color="grey", alpha=0.1)
-        for interval in Kernel.buy_intervals:
+        for interval in Kernel.trading_intervals["buy"]:
             ax.axvspan(interval[0], interval[1], color="r", alpha=0.1)
-        for interval in Kernel.sell_intervals:
+        for interval in Kernel.trading_intervals["sell"]:
             ax.axvspan(interval[0], interval[1], color="b", alpha=0.1)
 
         ax.text(

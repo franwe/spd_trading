@@ -24,9 +24,8 @@ class GARCH:
 
     Attributes:
         parameters (np.array): The parameters :math:`\\Theta = (\\omega, \\alpha, \\beta)` of GARCH model.
-        z_values (np.array): The domain for distribution of innovations.
         z_dens (np.array): The distribution of innovations :math:`\\mathcal{Z} = \\left\\{z_0, z_1, ...., z_T \\right\\}`
-        simulated_log_returns (np.array): simulated log returns at horizon (also: maturity) :math:`\tau`
+        simulated_log_returns (np.array): simulated log returns at horizon (also: maturity) :math:`\\tau`
         simulated_tau_mu (np.array): product of :math:`\\tau \\cdot \\mu` for each simulation
     """
 
@@ -53,11 +52,9 @@ class GARCH:
 
         # parameters that are created during run
         self.parameters = None
-        # self.parameter_bounds = None
         self.e_process = None
         self.z_process = None
         self.sigma2_process = None
-        self.z_values = None
         self.z_dens = None
         self.simulated_log_returns = None
         self.simulated_tau_mu = None
@@ -130,9 +127,11 @@ class GARCH:
         self.sigma2_process = sigma2_process
 
         # ------------------------------------------- kernel density estimation
-        self.z_values = np.linspace(min(self.z_process), max(self.z_process), 500)
+
+        z_dens_x = np.linspace(min(self.z_process), max(self.z_process), 500)
         h_dyn = self.z_h * (np.max(z_process) - np.min(z_process))
-        self.z_dens = density_estimation(np.array(z_process), np.array(self.z_values), h=h_dyn).tolist()
+        z_dens_y = density_estimation(np.array(z_process), np.array(z_dens_x), h=h_dyn).tolist()
+        self.z_dens = {"x": z_dens_x, "y": z_dens_y}
 
         logging.info(f"------------- save GARCH model: {self.filename_model}")
         self._save()
@@ -151,11 +150,11 @@ class GARCH:
         burnin = horizon * 2
         sigma2 = [omega / (1 - alpha - beta)]
         e = [self.data.tolist()[-1] - mu]  # last observed log-return mean adj.
-        weights = self.z_dens / (np.sum(self.z_dens))
+        weights = self.z_dens["y"] / (np.sum(self.z_dens["y"]))
 
         for _ in range(horizon + burnin):
             sigma2_tp1 = omega + alpha * e[-1] ** 2 + beta * sigma2[-1]
-            z_tp1 = np.random.choice(self.z_values, 1, p=weights)[0]
+            z_tp1 = np.random.choice(self.z_dens["x"], 1, p=weights)[0]
             e_tp1 = z_tp1 * np.sqrt(sigma2_tp1)
             sigma2.append(sigma2_tp1)
             e.append(e_tp1)
@@ -254,8 +253,7 @@ class Calculator(GARCH):
         log_returns (np.array): The daily log returns of the price index timeseries. Timeseries for GARCH model.
         GARCH (spd_trading.historical_density.GARCH): Instance of class.
         ST (np.array): Simulated prices of underlying, according to GARCH model.
-        M (np.array): Moneyness-Domain for density in M=S0/ST.
-        q_M (np.array): Density in M.
+        q_M (np.array): Density in Moneyness domain M=S0/ST.
     """
 
     def __init__(
@@ -297,7 +295,6 @@ class Calculator(GARCH):
             z_h=0.1,
         )
         self.ST = None
-        self.M = None
         self.q_M = None
 
     def _get_log_returns(self):
@@ -313,7 +310,7 @@ class Calculator(GARCH):
         """Calculates the underlyings' prices of maturity based on the simulations.
 
         Args:
-            simulated_log_returns (np.array): simulated log returns at horizon (also: maturity) :math:`\tau`
+            simulated_log_returns (np.array): simulated log returns at horizon (also: maturity) :math:`\\tau`
             simulated_tau_mu (np.array): product of :math:`\\tau \\cdot \\mu` for each simulation
 
         Returns:
@@ -344,9 +341,9 @@ class Calculator(GARCH):
             pd.Series(self.ST).to_csv(os.path.join(self.garch_data_folder, self.filename), index=False)
 
         self.ST = pd.read_csv(os.path.join(self.garch_data_folder, self.filename))
-        self.M = np.linspace((1 - self.cutoff), (1 + self.cutoff), 100)
+        M = np.linspace((1 - self.cutoff), (1 + self.cutoff), 100)
         simulated_paths_in_moneyness = np.array(self.S0 / self.ST)
-        self.q_M = density_estimation(simulated_paths_in_moneyness, self.M, h=self.h)
+        self.q_M = {"x": M, "y": density_estimation(simulated_paths_in_moneyness, M, h=self.h)}
 
 
 from matplotlib import pyplot as plt
@@ -374,7 +371,7 @@ class Plot:
         fig, (ax0) = plt.subplots(1, 1, figsize=(6, 4))
 
         # density q_m
-        ax0.plot(HD.M, HD.q_M)
+        ax0.plot(HD.q_M["x"], HD.q_M["y"])
 
         ax0.set_xlabel("Moneyness")
         ax0.set_ylabel("Historical Density")

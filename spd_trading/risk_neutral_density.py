@@ -115,11 +115,8 @@ class Calculator:
 
     Attributes:
         tau (float): Time to maturity in years.
-        K (np.array): Strike Price Domain, for standard result of Rookley's Method.
-        M (np.array): Moneyness Domain, for transformed result of Rookley's Method.
         q_M (np.array): Risk Neutral Density in Moneyness domain. Transformed result of Rookley's Method.
         q_K (np.array): Risk Neutral Density in Strike Price domain. Standard result of Rookley's Method.
-        M_smile (np.array): Moneyness Domain for implied volatility fit "iv-smile".
         smile (np.array): Implied volatility fit "iv-smile".
         first (np.array): First derivative of iv-smile.
         second (np.array): Second derivative of iv-smile.
@@ -156,11 +153,8 @@ class Calculator:
 
         # parameters that are created during run
         self.tau = self.data.tau.iloc[0]
-        self.K = None
-        self.M = None
         self.q_M = None
         self.q_K = None
-        self.M_smile = None
         self.smile = None
         self.first = None
         self.second = None
@@ -253,17 +247,17 @@ class Calculator:
             self.h_m,
         )  # h_m : Union[None, float]
         self.h_m = results["parameters"]["h"]
-        self.M_smile = results["fit"]["X"]
-        self.smile = results["fit"]["fit"]
-        self.first = results["fit"]["first"]
-        self.second = results["fit"]["second"]
+        self.smile = {"x": results["fit"]["X"], "y": results["fit"]["fit"]}
+        self.first = {"x": results["fit"]["X"], "y": results["fit"]["first"]}
+        self.second = {"x": results["fit"]["X"], "y": results["fit"]["second"]}
 
         # ------------------------------------ B-SPLINE on SMILE, FIRST, SECOND
         logging.info("fit bspline to derivatives for rookley method")
-        pars, spline, points = bspline(self.M_smile, self.smile, sections=8, degree=3)
+        pars, smile_spline, points = bspline(self.smile["x"], self.smile["y"], sections=8, degree=3)
         # derivatives
-        first_fct = spline.derivative(1)
-        second_fct = spline.derivative(2)
+        # TODO: why don't I use my derivatives here? test different results!
+        first_fct = smile_spline.derivative(1)
+        second_fct = smile_spline.derivative(2)
 
         # step 1: calculate spd for every option-point "Rookley's method"
         logging.info("calculate q_K (Rookley Method)")
@@ -272,7 +266,7 @@ class Calculator:
                 row.M,
                 row.S,
                 row.K,
-                spline(row.M),
+                smile_spline(row.M),
                 first_fct(row.M),
                 second_fct(row.M),
                 self.r,
@@ -292,12 +286,11 @@ class Calculator:
             self.h_k,
         )  # h_k : Union[None, float]
         self.h_k = results["parameters"]["h"]
-        self.q_K = results["fit"]["fit"]
-        self.K = results["fit"]["X"]
+        self.q_K = {"x": results["fit"]["X"], "y": results["fit"]["fit"]}
 
         # step 3: transform density POINTS from K- to M-domain
         logging.info("density transform rookley points q_K to q_M")
-        self.data["q_M"] = pointwise_density_trafo_K2M(self.K, self.q_K, self.data.S, self.data.M)
+        self.data["q_M"] = pointwise_density_trafo_K2M(self.q_K["x"], self.q_K["y"], self.data.S, self.data.M)
 
         # step 4: density points in M-domain - fit density curve
         logging.info("locpoly fit to q_M")
@@ -310,8 +303,7 @@ class Calculator:
             self.h_m2,
         )  # h_m : Union[None, float]
         self.h_m2 = results["parameters"]["h"]
-        self.q_M = results["fit"]["fit"]
-        self.M = results["fit"]["X"]
+        self.q_M = {"x": results["fit"]["X"], "y": results["fit"]["fit"]}
         return
 
 
@@ -349,28 +341,28 @@ class Plot:
 
         # smile
         ax0.scatter(RND.data.M, RND.data.iv, c="r", s=4)
-        ax0.plot(RND.M_smile, RND.smile)
+        ax0.plot(RND.smile["x"], RND.smile["y"])
         ax0.set_xlabel("Moneyness")
         ax0.set_ylabel("Implied Volatility")
         ax0.set_xlim(1 - self.x, 1 + self.x)
 
         # derivatives
-        ax1.plot(RND.M_smile, RND.smile)
-        ax1.plot(RND.M_smile, RND.first)
-        ax1.plot(RND.M_smile, RND.second)
+        ax1.plot(RND.smile["x"], RND.smile["y"])
+        ax1.plot(RND.first["x"], RND.first["y"])
+        ax1.plot(RND.second["x"], RND.second["y"])
         ax1.set_xlabel("Moneyness")
         ax1.set_xlim(1 - self.x, 1 + self.x)
 
         # density q_k
         ax2.scatter(RND.data.K, RND.data.q, c="r", s=4)
-        ax2.plot(RND.K, RND.q_K)
+        ax2.plot(RND.q_K["x"], RND.q_K["y"])
         ax2.set_xlabel("Strike Price")
         ax2.set_ylabel("Risk Neutral Density")
         ax2.set_ylim(0)
 
         # density q_m
         ax3.scatter(RND.data.M, RND.data.q_M, c="r", s=4)
-        ax3.plot(RND.M, RND.q_M)
+        ax3.plot(RND.q_M["x"], RND.q_M["y"])
         ax3.set_xlabel("Moneyness")
         ax3.set_ylabel("Risk Neutral Density")
         ax3.set_xlim(1 - self.x, 1 + self.x)

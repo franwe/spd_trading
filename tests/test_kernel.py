@@ -22,8 +22,8 @@ def test_rnd_hd_kernel(rnd_input_data, hd_input_data, evaluation_day, evaluation
     )
     RND.get_rnd()
 
-    assert RND.q_M is not None
-    assert RND.M is not None
+    assert RND.q_M["x"] is not None
+    assert RND.q_M["y"] is not None
 
     evaluation_S0 = hd_input_data.loc[
         hd_input_data.date_str == evaluation_day, "price"
@@ -43,8 +43,8 @@ def test_rnd_hd_kernel(rnd_input_data, hd_input_data, evaluation_day, evaluation
     )
     HD.get_hd(variate_GARCH_parameters=True)
 
-    assert HD.q_M is not None
-    assert HD.M is not None
+    assert HD.q_M["x"] is not None
+    assert HD.q_M["y"] is not None
 
     # ------------------------------------------------------------------- KERNEL
     Kernel = ker.Calculator(
@@ -53,6 +53,7 @@ def test_rnd_hd_kernel(rnd_input_data, hd_input_data, evaluation_day, evaluation
     Kernel.calc_kernel()
     Kernel.calc_trading_intervals()
 
-    assert Kernel.kernel is not None
-    assert Kernel.buy_intervals is not None
-    assert Kernel.sell_intervals is not None
+    assert Kernel.kernel["x"] is not None
+    assert Kernel.kernel["y"] is not None
+    assert Kernel.trading_intervals["buy"] is not None
+    assert Kernel.trading_intervals["sell"] is not None

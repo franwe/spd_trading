@@ -20,5 +20,5 @@ def test_get_hd(hd_input_data, evaluation_day, evaluation_tau):
     )
     HD.get_hd(variate_GARCH_parameters=True)
 
-    assert HD.q_M is not None
-    assert HD.M is not None
+    assert HD.q_M["x"] is not None
+    assert HD.q_M["y"] is not None

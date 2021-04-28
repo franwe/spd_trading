@@ -16,5 +16,5 @@ def test_get_rnd(rnd_input_data, evaluation_day, evaluation_tau):
     )
     RND.get_rnd()
 
-    assert RND.q_M is not None
-    assert RND.M is not None
+    assert RND.q_M["x"] is not None
+    assert RND.q_M["y"] is not None

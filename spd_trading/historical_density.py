@@ -21,6 +21,13 @@ class GARCH:
         overwrite_model (bool, optional): Whether to overwrite the GARCH model. Defaults to True.
         window_length (int, optional): Length of each sliding window. Defaults to 365.
         z_h (float, optional): Bandwidth *factor* for Kernel Density Estimation. Defaults to 0.1.
+
+    Attributes:
+        parameters (np.array): The parameters :math:`\\Theta = (\\omega, \\alpha, \\beta)` of GARCH model.
+        z_values (np.array): The domain for distribution of innovations.
+        z_dens (np.array): The distribution of innovations :math:`\\mathcal{Z} = \\left\\{z_0, z_1, ...., z_T \\right\\}`
+        simulated_log_returns (np.array): simulated log returns at horizon (also: maturity) :math:`\tau`
+        simulated_tau_mu (np.array): product of :math:`\\tau \\cdot \\mu` for each simulation
     """
 
     def __init__(
@@ -244,13 +251,11 @@ class Calculator(GARCH):
         simulations (int, optional): How many paths to simulate. Defaults to 5000.
 
     Attributes:
-        log_returns ():
-        GARCH ():
-        ST ():
-        K ():
-        q_K ():
-        M ():
-        q_M ():
+        log_returns (np.array): The daily log returns of the price index timeseries. Timeseries for GARCH model.
+        GARCH (spd_trading.historical_density.GARCH): Instance of class.
+        ST (np.array): Simulated prices of underlying, according to GARCH model.
+        M (np.array): Moneyness-Domain for density in M=S0/ST.
+        q_M (np.array): Density in M.
     """
 
     def __init__(
@@ -292,8 +297,6 @@ class Calculator(GARCH):
             z_h=0.1,
         )
         self.ST = None
-        self.K = None
-        self.q_K = None
         self.M = None
         self.q_M = None
 
@@ -341,9 +344,6 @@ class Calculator(GARCH):
             pd.Series(self.ST).to_csv(os.path.join(self.garch_data_folder, self.filename), index=False)
 
         self.ST = pd.read_csv(os.path.join(self.garch_data_folder, self.filename))
-        S_arr = np.array(self.ST)
-        self.K = np.linspace(self.S0 * (1 - self.cutoff), self.S0 * (1 + self.cutoff), 100)
-        self.q_K = density_estimation(S_arr, self.K, h=self.S0 * self.h)
         self.M = np.linspace((1 - self.cutoff), (1 + self.cutoff), 100)
         simulated_paths_in_moneyness = np.array(self.S0 / self.ST)
         self.q_M = density_estimation(simulated_paths_in_moneyness, self.M, h=self.h)

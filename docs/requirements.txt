@@ -1,4 +1,9 @@
 sphinx==3.5.4
 sphinx_rtd_theme==0.5.2
 sphinxcontrib-napoleon
+arch
 localpoly
+sklearn
+matplotlib
+statsmodels
+scipy

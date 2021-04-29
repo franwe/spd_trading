@@ -22,3 +22,6 @@ def test_get_hd(hd_input_data, evaluation_day, evaluation_tau):
 
     assert HD.q_M["x"] is not None
     assert HD.q_M["y"] is not None
+    assert HD.GARCH.parameters is not None
+    assert HD.GARCH.z_process is not None
+    assert HD.GARCH.z_dens is not None

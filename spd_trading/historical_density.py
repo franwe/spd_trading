@@ -84,6 +84,7 @@ class GARCH:
         """
         if os.path.exists(self.filename_model) and (self.overwrite_model == False):
             logging.info(f" -------------- use existing GARCH model: {self.filename_model}")
+            self._load()
             return
         start = self.window_length + self.n_fits
         end = self.n_fits
@@ -201,7 +202,6 @@ class GARCH:
             logging.info("    ----------- fit new GARCH model")
             self.fit()
 
-        self._load()
         pars = np.mean(self.parameters, axis=0).tolist()  # mean
         bounds = np.std(self.parameters, axis=0).tolist()  # std of parameters
         logging.info(f"garch parameters : {pars}")
@@ -331,6 +331,7 @@ class Calculator(GARCH):
             self.overwrite_simulations == False
         ):
             logging.info(f"-------------- use existing Simulations {self.filename}")
+            self.GARCH._load()  # load GARCH Model (parameters, z_dens)
             pass
         else:
             logging.info("-------------- create new Simulations")

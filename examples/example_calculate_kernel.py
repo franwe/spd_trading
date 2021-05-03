@@ -45,9 +45,7 @@ HD = hd.Calculator(
 HD.get_hd(variate_GARCH_parameters=True)
 
 # ----------------------------------------------------------------------- KERNEL
-Kernel = ker.Calculator(
-    tau_day=evaluation_tau, date=evaluation_day, RND=RND, HD=HD, similarity_threshold=0.15, cut_tail_percent=0.02
-)
+Kernel = ker.Calculator(tau_day=evaluation_tau, date=evaluation_day, RND=RND, HD=HD, cut_tail_percent=0.02)
 Kernel.calc_kernel()
 Kernel.calc_trading_intervals()
 

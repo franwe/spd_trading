@@ -28,7 +28,7 @@ class Calculator:
         trading_intervals (dict of list of tuples): M-intervals for which to buy and sell options according to kernel
     """
 
-    def __init__(self, tau_day, date, RND, HD, similarity_threshold=0.15, cut_tail_percent=0.02):
+    def __init__(self, tau_day, date, RND, HD, similarity_threshold=0, cut_tail_percent=0.02):
         self.tau_day = tau_day
         self.date = date
         self.RND = RND

@@ -96,8 +96,7 @@ Set the logging level to `INFO` if status reports are of interest. ::
         tau_day=evaluation_tau, 
         date=evaluation_day, 
         RND=RND, 
-        HD=HD, 
-        similarity_threshold=0.15, 
+        HD=HD,  
         cut_tail_percent=0.02
     )
     Kernel.calc_kernel()

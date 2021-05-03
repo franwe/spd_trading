@@ -17,7 +17,7 @@ import shutil
 # which is published on read the docs: https://spd_trading.readthedocs.io/en/latest/
 # release = get_distribution("spd_trading").version
 # version = ".".join(release.split(".")[:2])
-version = "0.1.0"
+version = "0.1.1"
 
 __location__ = os.path.join(os.getcwd(), os.path.dirname(inspect.getfile(inspect.currentframe())))
 

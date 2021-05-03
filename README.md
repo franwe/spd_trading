@@ -28,7 +28,7 @@ Via pip
 Or via download from git:
 
 ```
-    pip install git+https://github.com/franwe/localpoly#egg=spd-trading
+    pip install git+https://github.com/franwe/spd-trading#egg=spd-trading
 ```
 
 Note that in order to avoid potential conflicts with other packages it is strongly recommended to use a virtual environment (venv) or a conda environment.

@@ -375,7 +375,7 @@ class Plot:
         ax0.plot(HD.q_M["x"], HD.q_M["y"])
 
         ax0.set_xlabel("Moneyness")
-        ax0.set_ylabel("Historical Density")
+        ax0.set_ylabel("Probability")
         ax0.set_xlim(1 - self.x, 1 + self.x)
         ax0.set_ylim(0)
 

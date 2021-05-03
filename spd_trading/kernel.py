@@ -129,7 +129,7 @@ class Plot:
         ax.set_ylim(0)
         ax.axvline(x=1, c="k", alpha=0.1)
         ax.set_xlabel("Moneyness")
-        ax.set_ylabel("Density")
+        ax.set_ylabel("Probability")
 
         # -------------------------------------------------------------------------------------------- Kernel K = rnd/hd
         ax = axes[1]

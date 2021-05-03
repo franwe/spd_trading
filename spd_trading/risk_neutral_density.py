@@ -355,14 +355,14 @@ class Plot:
         ax2.scatter(RND.data.K, RND.data.q, c="r", s=4)
         ax2.plot(RND.q_K["x"], RND.q_K["y"])
         ax2.set_xlabel("Strike Price")
-        ax2.set_ylabel("Risk Neutral Density")
+        ax2.set_ylabel("Probability")
         ax2.set_ylim(0)
 
         # density q_m
         ax3.scatter(RND.data.M, RND.data.q_M, c="r", s=4)
         ax3.plot(RND.q_M["x"], RND.q_M["y"])
         ax3.set_xlabel("Moneyness")
-        ax3.set_ylabel("Risk Neutral Density")
+        ax3.set_ylabel("Probability")
         ax3.set_xlim(1 - self.x, 1 + self.x)
         ax3.set_ylim(0)
 

@@ -198,6 +198,7 @@ class GARCH:
         logging.info(f" -------------- simulate paths for: {self.data_name}, {horizon}, {simulations}")
         if os.path.exists(self.filename_model) and (self.overwrite_model == False):
             logging.info(f"    ----------- use existing GARCH model: {self.filename_model}")
+            self._load()
         else:
             logging.info("    ----------- fit new GARCH model")
             self.fit()

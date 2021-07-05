@@ -9,7 +9,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="spd_trading",
-    version="0.1.2",
+    version="0.1.3",
     url="https://github.com/franwe/spd_trading",
     project_urls={
         "Documentation": "https://spd_trading.readthedocs.io/en/latest/",
@@ -22,6 +22,14 @@ setup(
     long_description_content_type="text/markdown",
     license="MIT",
     packages=find_packages(),
-    python_requires=">=3",
-    install_requires=["numpy", "pandas", "scipy", "arch", "localpoly", "sklearn", "matplotlib", "statsmodels", "scipy"],
+    python_requires=">=3.9",
+    install_requires=["numpy==1.21.0", 
+                      "pandas==1.3.0", 
+                      "scipy==1.7.0", 
+                      "arch==4.19", 
+                      "localpoly==0.1.4", 
+                      "sklearn==0.0", 
+                      "matplotlib==3.4.2", 
+                      "statsmodels==0.12.2", 
+                      "scipy==1.7.0"],
 )
